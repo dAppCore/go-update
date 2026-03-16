@@ -75,7 +75,7 @@ func TestGetPublicRepos_Error(t *testing.T) {
 			Request:    &http.Request{Method: "GET", URL: u},
 		},
 	})
-	expectedErr := "failed to fetch repos: 404 Not Found"
+	expectedErr := "github.getPublicReposWithAPIURL: failed to fetch repos: 404 Not Found"
 
 	client := &githubClient{}
 	oldClient := NewAuthenticatedClient
@@ -89,7 +89,7 @@ func TestGetPublicRepos_Error(t *testing.T) {
 	// Test user repos
 	_, err := client.getPublicReposWithAPIURL(context.Background(), "https://api.github.com", "testuser")
 	if err.Error() != expectedErr {
-		t.Fatalf("getPublicReposWithAPIURL for user failed: %v", err)
+		t.Fatalf("getPublicReposWithAPIURL for user failed: expected %q, got %q", expectedErr, err.Error())
 	}
 }
 

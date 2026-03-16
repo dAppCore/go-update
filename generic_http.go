@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // GenericUpdateInfo holds the information from a latest.json file.
@@ -27,28 +29,28 @@ type GenericUpdateInfo struct {
 func GetLatestUpdateFromURL(baseURL string) (*GenericUpdateInfo, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid base URL: %w", err)
+		return nil, coreerr.E("GetLatestUpdateFromURL", "invalid base URL", err)
 	}
 	// Append latest.json to the path
 	u.Path += "/latest.json"
 
 	resp, err := http.Get(u.String())
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch latest.json: %w", err)
+		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to fetch latest.json", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch latest.json: status code %d", resp.StatusCode)
+		return nil, coreerr.E("GetLatestUpdateFromURL", fmt.Sprintf("failed to fetch latest.json: status code %d", resp.StatusCode), nil)
 	}
 
 	var info GenericUpdateInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, fmt.Errorf("failed to parse latest.json: %w", err)
+		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to parse latest.json", err)
 	}
 
 	if info.Version == "" || info.URL == "" {
-		return nil, fmt.Errorf("invalid latest.json content: version or url is missing")
+		return nil, coreerr.E("GetLatestUpdateFromURL", "invalid latest.json content: version or url is missing", nil)
 	}
 
 	return &info, nil

@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	coreerr "forge.lthn.ai/core/go-log"
 	"golang.org/x/oauth2"
 )
 
@@ -97,7 +98,7 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 
 		if resp.StatusCode != http.StatusOK {
 			_ = resp.Body.Close()
-			return nil, fmt.Errorf("failed to fetch repos: %s", resp.Status)
+			return nil, coreerr.E("github.getPublicReposWithAPIURL", fmt.Sprintf("failed to fetch repos: %s", resp.Status), nil)
 		}
 
 		var repos []Repo
@@ -155,7 +156,7 @@ func (g *githubClient) GetLatestRelease(ctx context.Context, owner, repo, channe
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch releases: %s", resp.Status)
+		return nil, coreerr.E("github.GetLatestRelease", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
 	}
 
 	var releases []Release
@@ -210,7 +211,7 @@ func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch releases: %s", resp.Status)
+		return nil, coreerr.E("github.GetReleaseByPullRequest", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
 	}
 
 	var releases []Release
@@ -266,7 +267,7 @@ func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo 
 //	fmt.Println(url) // "https://example.com/download/linux-amd64" (on a Linux AMD64 system)
 func GetDownloadURL(release *Release, releaseURLFormat string) (string, error) {
 	if release == nil {
-		return "", fmt.Errorf("no release provided")
+		return "", coreerr.E("GetDownloadURL", "no release provided", nil)
 	}
 
 	if releaseURLFormat != "" {
@@ -298,5 +299,5 @@ func GetDownloadURL(release *Release, releaseURLFormat string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no suitable download asset found for %s/%s", osName, archName)
+	return "", coreerr.E("GetDownloadURL", fmt.Sprintf("no suitable download asset found for %s/%s", osName, archName), nil)
 }

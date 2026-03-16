@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // StartupCheckMode defines the updater's behavior on startup.
@@ -63,7 +65,7 @@ func NewUpdateService(config UpdateServiceConfig) (*UpdateService, error) {
 	if isGitHub {
 		owner, repo, err = ParseRepoURL(config.RepoURL)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse GitHub repo URL: %w", err)
+			return nil, coreerr.E("NewUpdateService", "failed to parse GitHub repo URL", err)
 		}
 	}
 
@@ -95,7 +97,7 @@ func (s *UpdateService) startGitHubCheck() error {
 	case CheckAndUpdateOnStartup:
 		return CheckForUpdates(s.owner, s.repo, s.config.Channel, s.config.ForceSemVerPrefix, s.config.ReleaseURLFormat)
 	default:
-		return fmt.Errorf("unknown startup check mode: %d", s.config.CheckOnStartup)
+		return coreerr.E("startGitHubCheck", fmt.Sprintf("unknown startup check mode: %d", s.config.CheckOnStartup), nil)
 	}
 }
 
@@ -108,7 +110,7 @@ func (s *UpdateService) startHTTPCheck() error {
 	case CheckAndUpdateOnStartup:
 		return CheckForUpdatesHTTP(s.config.RepoURL)
 	default:
-		return fmt.Errorf("unknown startup check mode: %d", s.config.CheckOnStartup)
+		return coreerr.E("startHTTPCheck", fmt.Sprintf("unknown startup check mode: %d", s.config.CheckOnStartup), nil)
 	}
 }
 
@@ -121,7 +123,7 @@ func ParseRepoURL(repoURL string) (owner string, repo string, err error) {
 	}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 	if len(parts) < 2 {
-		return "", "", fmt.Errorf("invalid repo URL path: %s", u.Path)
+		return "", "", coreerr.E("ParseRepoURL", fmt.Sprintf("invalid repo URL path: %s", u.Path), nil)
 	}
 	return parts[0], parts[1], nil
 }

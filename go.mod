@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	forge.lthn.ai/core/cli v0.3.5
+	forge.lthn.ai/core/go-log v0.0.4
 	github.com/Snider/Borg v0.2.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/spf13/cobra v1.10.2
@@ -17,7 +18,6 @@ require (
 	forge.lthn.ai/core/go v0.3.1 // indirect
 	forge.lthn.ai/core/go-i18n v0.1.5 // indirect
 	forge.lthn.ai/core/go-inference v0.1.4 // indirect
-	forge.lthn.ai/core/go-log v0.0.4 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.4.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

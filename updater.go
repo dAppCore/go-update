@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	coreerr "forge.lthn.ai/core/go-log"
 	"github.com/minio/selfupdate"
 	"golang.org/x/mod/semver"
 )
@@ -44,9 +45,9 @@ var DoUpdate = func(url string) error {
 	err = selfupdate.Apply(resp.Body, selfupdate.Options{})
 	if err != nil {
 		if rerr := selfupdate.RollbackError(err); rerr != nil {
-			return fmt.Errorf("failed to rollback from failed update: %v", rerr)
+			return coreerr.E("DoUpdate", "failed to rollback from failed update", rerr)
 		}
-		return fmt.Errorf("update failed: %v", err)
+		return coreerr.E("DoUpdate", "update failed", err)
 	}
 
 	fmt.Println("Update applied successfully.")
@@ -62,7 +63,7 @@ var CheckForNewerVersion = func(owner, repo, channel string, forceSemVerPrefix b
 
 	release, err := client.GetLatestRelease(ctx, owner, repo, channel)
 	if err != nil {
-		return nil, false, fmt.Errorf("error fetching latest release: %w", err)
+		return nil, false, coreerr.E("CheckForNewerVersion", "error fetching latest release", err)
 	}
 
 	if release == nil {
@@ -105,7 +106,7 @@ var CheckForUpdates = func(owner, repo, channel string, forceSemVerPrefix bool, 
 
 	downloadURL, err := GetDownloadURL(release, releaseURLFormat)
 	if err != nil {
-		return fmt.Errorf("error getting download URL: %w", err)
+		return coreerr.E("CheckForUpdates", "error getting download URL", err)
 	}
 
 	return DoUpdate(downloadURL)
@@ -158,7 +159,7 @@ var CheckForUpdatesByPullRequest = func(owner, repo string, prNumber int, releas
 
 	release, err := client.GetReleaseByPullRequest(ctx, owner, repo, prNumber)
 	if err != nil {
-		return fmt.Errorf("error fetching release for pull request: %w", err)
+		return coreerr.E("CheckForUpdatesByPullRequest", "error fetching release for pull request", err)
 	}
 
 	if release == nil {
@@ -170,7 +171,7 @@ var CheckForUpdatesByPullRequest = func(owner, repo string, prNumber int, releas
 
 	downloadURL, err := GetDownloadURL(release, releaseURLFormat)
 	if err != nil {
-		return fmt.Errorf("error getting download URL: %w", err)
+		return coreerr.E("CheckForUpdatesByPullRequest", "error getting download URL", err)
 	}
 
 	return DoUpdate(downloadURL)

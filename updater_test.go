@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+
+	coreerr "forge.lthn.ai/core/go-log"
 )
 
 // mockGithubClient is a mock implementation of the GithubClient interface for testing.
@@ -34,7 +36,7 @@ func (m *mockGithubClient) GetPublicRepos(ctx context.Context, userOrOrg string)
 	if m.getPublicRepos != nil {
 		return m.getPublicRepos(ctx, userOrOrg)
 	}
-	return nil, fmt.Errorf("GetPublicRepos not implemented")
+	return nil, coreerr.E("mockGithubClient.GetPublicRepos", "not implemented", nil)
 }
 
 func ExampleCheckForNewerVersion() {

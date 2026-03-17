@@ -11,6 +11,8 @@ forge.lthn.ai/core/go-i18n v0.1.6 h1:Z9h6sEZsgJmWlkkq3ZPZyfgWipeeqN5lDCpzltpamHU
 forge.lthn.ai/core/go-i18n v0.1.6/go.mod h1:C6CbwdN7sejTx/lbutBPrxm77b8paMHBO6uHVLHOdqQ=
 forge.lthn.ai/core/go-inference v0.1.5 h1:Az/Euv1DusJQJz/Eca0Ey7sVXQkFLPHW0TBrs9g+Qwg=
 forge.lthn.ai/core/go-inference v0.1.5/go.mod h1:jfWz+IJX55wAH98+ic6FEqqGB6/P31CHlg7VY7pxREw=
+forge.lthn.ai/core/go-io v0.1.5 h1:+XJ1YhaGGFLGtcNbPtVlndTjk+pO0Ydi2hRDj5/cHOM=
+forge.lthn.ai/core/go-io v0.1.5/go.mod h1:FRtXSsi8W+U9vewCU+LBAqqbIj3wjXA4dBdSv3SAtWI=
 forge.lthn.ai/core/go-log v0.0.4 h1:KTuCEPgFmuM8KJfnyQ8vPOU1Jg654W74h8IJvfQMfv0=
 forge.lthn.ai/core/go-log v0.0.4/go.mod h1:r14MXKOD3LF/sI8XUJQhRk/SZHBE7jAFVuCfgkXoZPw=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=

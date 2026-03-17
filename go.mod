@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	forge.lthn.ai/core/cli v0.3.6
+	forge.lthn.ai/core/go-io v0.1.5
 	forge.lthn.ai/core/go-log v0.0.4
 	github.com/Snider/Borg v0.2.0
 	github.com/minio/selfupdate v0.6.0

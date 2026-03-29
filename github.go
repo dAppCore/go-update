@@ -50,12 +50,15 @@ type githubClient struct{}
 var NewAuthenticatedClient = func(ctx context.Context) *http.Client {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return http.DefaultClient
+		return NewHTTPClient()
 	}
+
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)
-	return oauth2.NewClient(ctx, ts)
+	client := oauth2.NewClient(ctx, ts)
+	client.Timeout = defaultHTTPTimeout
+	return client
 }
 
 func (g *githubClient) GetPublicRepos(ctx context.Context, userOrOrg string) ([]string, error) {
@@ -71,11 +74,10 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		req, err := newAgentRequest(ctx, "GET", url)
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("User-Agent", "Borg-Data-Collector")
 		resp, err := client.Do(req)
 		if err != nil {
 			return nil, err
@@ -85,11 +87,10 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 			_ = resp.Body.Close()
 			// Try organization endpoint
 			url = fmt.Sprintf("%s/orgs/%s/repos", apiURL, userOrOrg)
-			req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
+			req, err = newAgentRequest(ctx, "GET", url)
 			if err != nil {
 				return nil, err
 			}
-			req.Header.Set("User-Agent", "Borg-Data-Collector")
 			resp, err = client.Do(req)
 			if err != nil {
 				return nil, err
@@ -143,11 +144,10 @@ func (g *githubClient) GetLatestRelease(ctx context.Context, owner, repo, channe
 	client := NewAuthenticatedClient(ctx)
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", owner, repo)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := newAgentRequest(ctx, "GET", url)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Borg-Data-Collector")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -198,11 +198,10 @@ func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo 
 	client := NewAuthenticatedClient(ctx)
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", owner, repo)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := newAgentRequest(ctx, "GET", url)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Borg-Data-Collector")
 
 	resp, err := client.Do(req)
 	if err != nil {

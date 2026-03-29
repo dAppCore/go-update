@@ -31,9 +31,15 @@ var NewGithubClient = func() GithubClient {
 // DoUpdate is a variable that holds the function to perform the actual update.
 // This can be replaced in tests to prevent actual updates.
 var DoUpdate = func(url string) error {
-	resp, err := http.Get(url)
+	client := NewHTTPClient()
+	req, err := newAgentRequest(context.Background(), "GET", url)
 	if err != nil {
-		return err
+		return coreerr.E("DoUpdate", "failed to create update request", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return coreerr.E("DoUpdate", "failed to download update", err)
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -41,6 +47,10 @@ var DoUpdate = func(url string) error {
 			fmt.Printf("failed to close response body: %v\n", err)
 		}
 	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return coreerr.E("DoUpdate", fmt.Sprintf("failed to download update: %s", resp.Status), nil)
+	}
 
 	err = selfupdate.Apply(resp.Body, selfupdate.Options{})
 	if err != nil {

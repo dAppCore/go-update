@@ -3,8 +3,10 @@ package updater
 import (
 	"encoding/json"
 	"fmt"
+	"context"
 	"net/http"
 	"net/url"
+	"strings"
 
 	coreerr "forge.lthn.ai/core/go-log"
 )
@@ -31,10 +33,16 @@ func GetLatestUpdateFromURL(baseURL string) (*GenericUpdateInfo, error) {
 	if err != nil {
 		return nil, coreerr.E("GetLatestUpdateFromURL", "invalid base URL", err)
 	}
-	// Append latest.json to the path
-	u.Path += "/latest.json"
 
-	resp, err := http.Get(u.String())
+	// Append latest.json to the path
+	u.Path = strings.TrimSuffix(u.Path, "/") + "/latest.json"
+
+	req, err := newAgentRequest(context.Background(), "GET", u.String())
+	if err != nil {
+		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to create update check request", err)
+	}
+
+	resp, err := NewHTTPClient().Do(req)
 	if err != nil {
 		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to fetch latest.json", err)
 	}

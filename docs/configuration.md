@@ -26,9 +26,7 @@ The `CheckOnStartup` field can take one of the following values:
 
 If you are using the example CLI provided in `cmd/updater`, the following flags are available:
 
-*   `--check-update`: Check for new updates without applying them.
-*   `--do-update`: Perform an update if available.
-*   `--channel`: Set the update channel (e.g., stable, beta, alpha). If not set, it's determined from the current version tag.
-*   `--force-semver-prefix`: Force 'v' prefix on semver tags (default `true`).
-*   `--release-url-format`: A URL format for release assets.
-*   `--pull-request`: Update to a specific pull request (integer ID).
+*   `--check`: Check for new updates without applying them.
+*   `--channel`: Set the update channel (e.g., stable, beta, alpha). Defaults to `stable`.
+*   `--force`: Force update even when already on latest.
+*   `--watch-pid`: Internal flag used during restart after update.

@@ -42,10 +42,7 @@ var DoUpdate = func(url string) error {
 		return coreerr.E("DoUpdate", "failed to download update", err)
 	}
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Printf("failed to close response body: %v\n", err)
-		}
+		_ = Body.Close()
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
@@ -59,8 +56,6 @@ var DoUpdate = func(url string) error {
 		}
 		return coreerr.E("DoUpdate", "update failed", err)
 	}
-
-	fmt.Println("Update applied successfully.")
 	return nil
 }
 

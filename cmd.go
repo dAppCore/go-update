@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"github.com/spf13/cobra"
@@ -47,7 +48,7 @@ Examples:
 
 	updateCmd.PersistentFlags().StringVar(&updateChannel, "channel", "stable", "Release channel: stable, beta, alpha, or dev")
 	updateCmd.PersistentFlags().BoolVar(&updateForce, "force", false, "Force update even if already on latest version")
-	updateCmd.Flags().BoolVar(&updateCheck, "check", false, "Only check for updates, don't apply")
+	updateCmd.Flags().BoolVar(&updateCheck, "check", false, "Only check for updates, do not apply")
 	updateCmd.Flags().IntVar(&updateWatchPID, "watch-pid", 0, "Internal: watch for parent PID to die then restart")
 	_ = updateCmd.Flags().MarkHidden("watch-pid")
 
@@ -55,7 +56,9 @@ Examples:
 		Use:   "check",
 		Short: "Check for available updates",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			previousCheck := updateCheck
 			updateCheck = true
+			defer func() { updateCheck = previousCheck }()
 			return runUpdate(cmd, args)
 		},
 	})
@@ -70,24 +73,25 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	currentVersion := cli.AppVersion
+	normalizedChannel := strings.TrimSpace(strings.ToLower(updateChannel))
 
 	cli.Print("%s %s\n", cli.DimStyle.Render("Current version:"), cli.ValueStyle.Render(currentVersion))
 	cli.Print("%s %s/%s\n", cli.DimStyle.Render("Platform:"), runtime.GOOS, runtime.GOARCH)
-	cli.Print("%s %s\n\n", cli.DimStyle.Render("Channel:"), updateChannel)
+	cli.Print("%s %s\n\n", cli.DimStyle.Render("Channel:"), normalizedChannel)
 
 	// Handle dev channel specially - it's a prerelease tag, not a semver channel
-	if updateChannel == "dev" {
+	if normalizedChannel == "dev" {
 		return handleDevUpdate(currentVersion)
 	}
 
 	// Check for newer version
-	release, updateAvailable, err := CheckForNewerVersion(repoOwner, repoName, updateChannel, true)
+	release, updateAvailable, err := CheckForNewerVersion(repoOwner, repoName, normalizedChannel, true)
 	if err != nil {
 		return cli.Wrap(err, "failed to check for updates")
 	}
 
 	if release == nil {
-		cli.Print("%s No releases found in %s channel\n", cli.WarningStyle.Render("!"), updateChannel)
+		cli.Print("%s No releases found in %s channel\n", cli.WarningStyle.Render("!"), normalizedChannel)
 		return nil
 	}
 
@@ -140,7 +144,7 @@ func handleDevUpdate(currentVersion string) error {
 	client := NewGithubClient()
 
 	// Fetch the dev release directly by tag
-	release, err := client.GetLatestRelease(context.TODO(), repoOwner, repoName, "beta")
+	release, err := client.GetLatestRelease(context.Background(), repoOwner, repoName, "beta")
 	if err != nil {
 		// Try fetching the "dev" tag directly
 		return handleDevTagUpdate(currentVersion)

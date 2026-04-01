@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"runtime"
-	"strings"
 
 	"forge.lthn.ai/core/cli/pkg/cli"
 	"github.com/spf13/cobra"
@@ -46,7 +45,7 @@ Examples:
 		RunE: runUpdate,
 	}
 
-	updateCmd.PersistentFlags().StringVar(&updateChannel, "channel", "stable", "Release channel: stable, beta, alpha, or dev")
+	updateCmd.PersistentFlags().StringVar(&updateChannel, "channel", "stable", "Release channel: stable, beta, alpha, prerelease, or dev")
 	updateCmd.PersistentFlags().BoolVar(&updateForce, "force", false, "Force update even if already on latest version")
 	updateCmd.Flags().BoolVar(&updateCheck, "check", false, "Only check for updates, do not apply")
 	updateCmd.Flags().IntVar(&updateWatchPID, "watch-pid", 0, "Internal: watch for parent PID to die then restart")
@@ -73,7 +72,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	currentVersion := cli.AppVersion
-	normalizedChannel := strings.TrimSpace(strings.ToLower(updateChannel))
+	normalizedChannel := normaliseGitHubChannel(updateChannel)
 
 	cli.Print("%s %s\n", cli.DimStyle.Render("Current version:"), cli.ValueStyle.Render(currentVersion))
 	cli.Print("%s %s/%s\n", cli.DimStyle.Render("Platform:"), runtime.GOOS, runtime.GOARCH)

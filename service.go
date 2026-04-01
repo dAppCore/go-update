@@ -30,7 +30,8 @@ type UpdateServiceConfig struct {
 	// repository URL (e.g., "https://github.com/owner/repo") or a base URL
 	// for a generic HTTP update server.
 	RepoURL string
-	// Channel specifies the release channel to track (e.g., "stable", "prerelease").
+	// Channel specifies the release channel to track (e.g., "stable", "beta", or "prerelease").
+	// "prerelease" is normalised to "beta" to match the GitHub release filter.
 	// This is only used for GitHub-based updates.
 	Channel string
 	// CheckOnStartup determines the update behavior when the service starts.
@@ -133,6 +134,9 @@ func normaliseGitHubChannel(channel string) string {
 	channel = strings.ToLower(strings.TrimSpace(channel))
 	if channel == "" {
 		return "stable"
+	}
+	if channel == "prerelease" {
+		return "beta"
 	}
 	return channel
 }

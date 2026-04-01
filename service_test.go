@@ -39,6 +39,15 @@ func TestNewUpdateService(t *testing.T) {
 			wantChannel: "beta",
 		},
 		{
+			name: "GitHub prerelease channel maps to beta",
+			config: UpdateServiceConfig{
+				RepoURL: "https://github.com/owner/repo",
+				Channel: " prerelease ",
+			},
+			isGitHub:    true,
+			wantChannel: "beta",
+		},
+		{
 			name: "Invalid GitHub URL",
 			config: UpdateServiceConfig{
 				RepoURL: "https://github.com/owner",

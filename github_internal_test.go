@@ -82,6 +82,54 @@ func TestDetermineChannel_Good(t *testing.T) {
 	}
 }
 
+func TestCheckForUpdatesByTag_UsesCurrentVersionChannel(t *testing.T) {
+	originalVersion := Version
+	originalCheckForUpdates := CheckForUpdates
+	defer func() {
+		Version = originalVersion
+		CheckForUpdates = originalCheckForUpdates
+	}()
+
+	var gotChannel string
+	CheckForUpdates = func(owner, repo, channel string, forceSemVerPrefix bool, releaseURLFormat string) error {
+		gotChannel = channel
+		return nil
+	}
+
+	Version = "v2.0.0-rc.1"
+	if err := CheckForUpdatesByTag("owner", "repo"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if gotChannel != "beta" {
+		t.Fatalf("expected beta channel, got %q", gotChannel)
+	}
+}
+
+func TestCheckOnlyByTag_UsesCurrentVersionChannel(t *testing.T) {
+	originalVersion := Version
+	originalCheckOnly := CheckOnly
+	defer func() {
+		Version = originalVersion
+		CheckOnly = originalCheckOnly
+	}()
+
+	var gotChannel string
+	CheckOnly = func(owner, repo, channel string, forceSemVerPrefix bool, releaseURLFormat string) error {
+		gotChannel = channel
+		return nil
+	}
+
+	Version = "v2.0.0-alpha.1"
+	if err := CheckOnlyByTag("owner", "repo"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if gotChannel != "alpha" {
+		t.Fatalf("expected alpha channel, got %q", gotChannel)
+	}
+}
+
 func TestGetDownloadURL_Good(t *testing.T) {
 	osName := runtime.GOOS
 	archName := runtime.GOARCH

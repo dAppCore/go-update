@@ -50,7 +50,7 @@ type githubClient struct{}
 var NewAuthenticatedClient = func(ctx context.Context) *http.Client {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return NewHTTPClient()
+		return http.DefaultClient
 	}
 
 	ts := oauth2.StaticTokenSource(

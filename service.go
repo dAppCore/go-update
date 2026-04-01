@@ -63,6 +63,7 @@ func NewUpdateService(config UpdateServiceConfig) (*UpdateService, error) {
 	var err error
 
 	if isGitHub {
+		config.Channel = normaliseGitHubChannel(config.Channel)
 		owner, repo, err = ParseRepoURL(config.RepoURL)
 		if err != nil {
 			return nil, coreerr.E("NewUpdateService", "failed to parse GitHub repo URL", err)
@@ -126,4 +127,12 @@ func ParseRepoURL(repoURL string) (owner string, repo string, err error) {
 		return "", "", coreerr.E("ParseRepoURL", fmt.Sprintf("invalid repo URL path: %s", u.Path), nil)
 	}
 	return parts[0], parts[1], nil
+}
+
+func normaliseGitHubChannel(channel string) string {
+	channel = strings.ToLower(strings.TrimSpace(channel))
+	if channel == "" {
+		return "stable"
+	}
+	return channel
 }

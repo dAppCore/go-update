@@ -12,13 +12,15 @@ func TestNewUpdateService(t *testing.T) {
 		config      UpdateServiceConfig
 		expectError bool
 		isGitHub    bool
+		wantChannel string
 	}{
 		{
 			name: "Valid GitHub URL",
 			config: UpdateServiceConfig{
 				RepoURL: "https://github.com/owner/repo",
 			},
-			isGitHub: true,
+			isGitHub:    true,
+			wantChannel: "stable",
 		},
 		{
 			name: "Valid non-GitHub URL",
@@ -26,6 +28,15 @@ func TestNewUpdateService(t *testing.T) {
 				RepoURL: "https://example.com/updates",
 			},
 			isGitHub: false,
+		},
+		{
+			name: "GitHub channel is normalised",
+			config: UpdateServiceConfig{
+				RepoURL: "https://github.com/owner/repo",
+				Channel: " Beta ",
+			},
+			isGitHub:    true,
+			wantChannel: "beta",
 		},
 		{
 			name: "Invalid GitHub URL",
@@ -44,6 +55,9 @@ func TestNewUpdateService(t *testing.T) {
 			}
 			if err == nil && service.isGitHub != tc.isGitHub {
 				t.Errorf("Expected isGitHub: %v, got: %v", tc.isGitHub, service.isGitHub)
+			}
+			if err == nil && tc.wantChannel != "" && service.config.Channel != tc.wantChannel {
+				t.Errorf("Expected GitHub channel %q, got %q", tc.wantChannel, service.config.Channel)
 			}
 		})
 	}

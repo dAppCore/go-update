@@ -145,14 +145,14 @@ var CheckOnly = func(owner, repo, channel string, forceSemVerPrefix bool, releas
 // CheckForUpdatesByTag checks for and applies updates from GitHub based on the channel
 // determined by the current application's version tag (e.g., 'stable' or 'prerelease').
 var CheckForUpdatesByTag = func(owner, repo string) error {
-	channel := determineChannel(Version, false) // isPreRelease is false for current version
+	channel := determineChannel(Version, semver.Prerelease(formatVersionForComparison(Version)) != "")
 	return CheckForUpdates(owner, repo, channel, true, "")
 }
 
 // CheckOnlyByTag checks for updates from GitHub based on the channel determined by the
 // current version tag, without applying them.
 var CheckOnlyByTag = func(owner, repo string) error {
-	channel := determineChannel(Version, false) // isPreRelease is false for current version
+	channel := determineChannel(Version, semver.Prerelease(formatVersionForComparison(Version)) != "")
 	return CheckOnly(owner, repo, channel, true, "")
 }
 

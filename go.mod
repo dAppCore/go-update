@@ -1,11 +1,11 @@
-module forge.lthn.ai/core/go-update
+module dappco.re/go/core/update
 
 go 1.26.0
 
 require (
-	forge.lthn.ai/core/cli v0.3.6
-	forge.lthn.ai/core/go-io v0.1.5
-	forge.lthn.ai/core/go-log v0.0.4
+	dappco.re/go/core/cli v0.3.6
+	dappco.re/go/core/io v0.1.5
+	dappco.re/go/core/log v0.0.4
 	github.com/Snider/Borg v0.2.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/spf13/cobra v1.10.2
@@ -16,9 +16,9 @@ require (
 require (
 	aead.dev/minisign v0.3.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
-	forge.lthn.ai/core/go v0.3.1 // indirect
-	forge.lthn.ai/core/go-i18n v0.1.6 // indirect
-	forge.lthn.ai/core/go-inference v0.1.5 // indirect
+	dappco.re/go/core v0.3.1 // indirect
+	dappco.re/go/core/i18n v0.1.6 // indirect
+	dappco.re/go/core/inference v0.1.5 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.4.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

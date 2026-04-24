@@ -6,11 +6,11 @@ require (
 	dappco.re/go/core/cli v0.3.6
 	dappco.re/go/core/io v0.1.5
 	dappco.re/go/core/log v0.0.4
-	github.com/Snider/Borg v0.2.0
-	github.com/minio/selfupdate v0.6.0
-	github.com/spf13/cobra v1.10.2
-	golang.org/x/mod v0.34.0
-	golang.org/x/oauth2 v0.36.0
+	github.com/Snider/Borg v0.2.0 // Note: HTTP client mocks for GitHub API tests; no core equivalent
+	github.com/minio/selfupdate v0.6.0 // Note: in-place binary self-update and rollback support; no core equivalent
+	github.com/spf13/cobra v1.10.2 // Note: CLI command and flag wiring; no core equivalent
+	golang.org/x/mod v0.34.0 // Note: semantic version comparison for update checks; no core equivalent
+	golang.org/x/oauth2 v0.36.0 // Note: OAuth2-backed GitHub API HTTP client; no core equivalent
 )
 
 require (

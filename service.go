@@ -1,4 +1,4 @@
-//go:generate go run forge.lthn.ai/core/go-update/build
+//go:generate go run dappco.re/go/core/update/build
 
 // Package updater provides functionality for self-updating Go applications.
 // It supports updates from GitHub releases and generic HTTP endpoints.

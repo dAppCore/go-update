@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	updater "forge.lthn.ai/core/go-update"
+	updater "dappco.re/go/core/update"
 )
 
 func ExampleNewUpdateService() {

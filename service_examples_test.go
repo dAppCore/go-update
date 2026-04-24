@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	updater "dappco.re/go/core/update"
+	updater "dappco.re/go/update"
 )
 
 func ExampleNewUpdateService() {

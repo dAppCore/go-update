@@ -1,4 +1,4 @@
-module dappco.re/go/core/update
+module dappco.re/go/update
 
 go 1.26.0
 

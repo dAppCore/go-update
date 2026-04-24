@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	coreio "forge.lthn.ai/core/go-io"
+	coreio "dappco.re/go/io"
 )
 
 func main() {

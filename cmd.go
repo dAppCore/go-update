@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"forge.lthn.ai/core/cli/pkg/cli"
+	"dappco.re/go/cli/pkg/cli"
 	"github.com/spf13/cobra"
 )
 

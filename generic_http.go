@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/log"
 )
 
 // GenericUpdateInfo holds the information from a latest.json file.

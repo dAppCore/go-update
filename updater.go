@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/log"
 	"github.com/minio/selfupdate"
 	"golang.org/x/mod/semver"
 )

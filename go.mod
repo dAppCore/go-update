@@ -3,9 +3,9 @@ module dappco.re/go/update
 go 1.26.0
 
 require (
-	dappco.re/go/cli v0.3.6
-	dappco.re/go/io v0.1.5
-	dappco.re/go/log v0.0.4
+	dappco.re/go/cli v0.8.0-alpha.1
+	dappco.re/go/io v0.8.0-alpha.1
+	dappco.re/go/log v0.8.0-alpha.1
 	github.com/Snider/Borg v0.2.0 // Note: HTTP client mocks for GitHub API tests; no core equivalent
 	github.com/minio/selfupdate v0.6.0 // Note: in-place binary self-update and rollback support; no core equivalent
 	github.com/spf13/cobra v1.10.2 // Note: CLI command and flag wiring; no core equivalent
@@ -16,9 +16,9 @@ require (
 require (
 	aead.dev/minisign v0.3.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
-	dappco.re/go/core v0.3.1 // indirect
-	dappco.re/go/i18n v0.1.6 // indirect
-	dappco.re/go/inference v0.1.5 // indirect
+	dappco.re/go/core v0.8.0-alpha.1 // indirect
+	dappco.re/go/i18n v0.8.0-alpha.1 // indirect
+	dappco.re/go/inference v0.8.0-alpha.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.4.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

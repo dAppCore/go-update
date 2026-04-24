@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"runtime"
 
-	coreerr "forge.lthn.ai/core/go-log"
+	coreerr "dappco.re/go/log"
 )
 
 // mockGithubClient is a mock implementation of the GithubClient interface for testing.

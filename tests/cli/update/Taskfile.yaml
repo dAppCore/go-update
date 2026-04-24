@@ -1,0 +1,29 @@
+version: "3"
+
+tasks:
+  default:
+    desc: Validate the go-update CLI artifact driver.
+    dir: ../../..
+    cmds:
+      - |
+        export GOCACHE="${GOCACHE:-/tmp/go-update-gocache}"
+        export GOMODCACHE="${GOMODCACHE:-/tmp/go-update-gomodcache}"
+        export GOPATH="/tmp/go-update-gopath"
+        export GOWORK=off
+        export GONOSUMDB="${GONOSUMDB:+$GONOSUMDB,}forge.lthn.ai/*"
+        mkdir -p "$GOCACHE" "$GOMODCACHE"
+        bin="$(mktemp -t core-update.XXXXXX)"
+        modfile="/tmp/core-update-mod-$$.mod"
+        trap 'rm -f "$bin" "$modfile" "${modfile%.mod}.sum"' EXIT
+        cp go.mod "$modfile"
+        go mod edit -modfile="$modfile" \
+          -droprequire=dappco.re/go/cli \
+          -droprequire=dappco.re/go/io \
+          -droprequire=dappco.re/go/log \
+          -droprequire=dappco.re/go/core \
+          -droprequire=dappco.re/go/i18n \
+          -droprequire=dappco.re/go/inference \
+          -require=forge.lthn.ai/core/cli@v0.3.6 \
+          -require=forge.lthn.ai/core/go-log@v0.0.4
+        GOFLAGS="-modfile=$modfile -mod=mod" go build -o "$bin" ./tests/cli/update
+        "$bin"

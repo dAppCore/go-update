@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	// Note: Borg encryption library; awaiting canonical dappco.re/go/borg publication.
 	"github.com/Snider/Borg/pkg/mocks"
 )
 

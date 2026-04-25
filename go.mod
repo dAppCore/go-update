@@ -6,7 +6,7 @@ require (
 	dappco.re/go/cli v0.8.0-alpha.1
 	dappco.re/go/io v0.8.0-alpha.1
 	dappco.re/go/log v0.8.0-alpha.1
-	github.com/Snider/Borg v0.2.0 // Note: HTTP client mocks for GitHub API tests; no core equivalent
+	github.com/Snider/Borg v0.2.0 // TODO(#763): replace with dappco.re/go/borg once published.
 	github.com/minio/selfupdate v0.6.0 // Note: in-place binary self-update and rollback support; no core equivalent
 	github.com/spf13/cobra v1.10.2 // Note: CLI command and flag wiring; no core equivalent
 	golang.org/x/mod v0.34.0 // Note: semantic version comparison for update checks; no core equivalent

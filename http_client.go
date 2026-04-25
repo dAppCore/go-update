@@ -2,9 +2,10 @@ package updater
 
 import (
 	"context"
-	"fmt"
-	"net/http"
+	"net/http" // Note: AX-6 - structural HTTP transport boundary for update client/request types.
 	"time"
+
+	"dappco.re/go/core"
 )
 
 const defaultHTTPTimeout = 30 * time.Second
@@ -28,5 +29,5 @@ func updaterUserAgent() string {
 	if version == "" {
 		version = "unknown"
 	}
-	return fmt.Sprintf("agent-go-update/%s", version)
+	return core.Sprintf("agent-go-update/%s", version)
 }

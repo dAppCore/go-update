@@ -1,13 +1,11 @@
 package updater
 
 import (
-	"encoding/json"
-	"fmt"
 	"context"
-	"net/http"
+	"net/http" // Note: AX-6 - structural HTTP transport boundary for update discovery responses.
 	"net/url"
-	"strings"
 
+	"dappco.re/go/core"
 	coreerr "dappco.re/go/log"
 )
 
@@ -35,7 +33,7 @@ func GetLatestUpdateFromURL(baseURL string) (*GenericUpdateInfo, error) {
 	}
 
 	// Append latest.json to the path
-	u.Path = strings.TrimSuffix(u.Path, "/") + "/latest.json"
+	u.Path = core.Concat(core.TrimSuffix(u.Path, "/"), "/latest.json")
 
 	req, err := newAgentRequest(context.Background(), "GET", u.String())
 	if err != nil {
@@ -46,15 +44,27 @@ func GetLatestUpdateFromURL(baseURL string) (*GenericUpdateInfo, error) {
 	if err != nil {
 		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to fetch latest.json", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, coreerr.E("GetLatestUpdateFromURL", fmt.Sprintf("failed to fetch latest.json: status code %d", resp.StatusCode), nil)
+		_ = resp.Body.Close()
+		return nil, coreerr.E("GetLatestUpdateFromURL", core.Sprintf("failed to fetch latest.json: status code %d", resp.StatusCode), nil)
+	}
+
+	body := core.ReadAll(resp.Body)
+	if !body.OK {
+		if readErr, ok := body.Value.(error); ok {
+			return nil, coreerr.E("GetLatestUpdateFromURL", "failed to read latest.json", readErr)
+		}
+		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to read latest.json", nil)
 	}
 
 	var info GenericUpdateInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to parse latest.json", err)
+	// AX-6: latest.json is an HTTP response body boundary; decode through Core JSON.
+	if result := core.JSONUnmarshal([]byte(body.Value.(string)), &info); !result.OK {
+		if parseErr, ok := result.Value.(error); ok {
+			return nil, coreerr.E("GetLatestUpdateFromURL", "failed to parse latest.json", parseErr)
+		}
+		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to parse latest.json", nil)
 	}
 
 	if info.Version == "" || info.URL == "" {

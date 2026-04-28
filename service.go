@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	coreerr "dappco.re/go/log"
+	core "dappco.re/go"
 )
 
 // StartupCheckMode defines the updater's behavior on startup.
@@ -67,7 +67,7 @@ func NewUpdateService(config UpdateServiceConfig) (*UpdateService, error) {
 		config.Channel = normaliseGitHubChannel(config.Channel)
 		owner, repo, err = ParseRepoURL(config.RepoURL)
 		if err != nil {
-			return nil, coreerr.E("NewUpdateService", "failed to parse GitHub repo URL", err)
+			return nil, core.E("NewUpdateService", "failed to parse GitHub repo URL", err)
 		}
 	}
 
@@ -99,7 +99,7 @@ func (s *UpdateService) startGitHubCheck() error {
 	case CheckAndUpdateOnStartup:
 		return CheckForUpdates(s.owner, s.repo, s.config.Channel, s.config.ForceSemVerPrefix, s.config.ReleaseURLFormat)
 	default:
-		return coreerr.E("startGitHubCheck", fmt.Sprintf("unknown startup check mode: %d", s.config.CheckOnStartup), nil)
+		return core.E("startGitHubCheck", fmt.Sprintf("unknown startup check mode: %d", s.config.CheckOnStartup), nil)
 	}
 }
 
@@ -112,7 +112,7 @@ func (s *UpdateService) startHTTPCheck() error {
 	case CheckAndUpdateOnStartup:
 		return CheckForUpdatesHTTP(s.config.RepoURL)
 	default:
-		return coreerr.E("startHTTPCheck", fmt.Sprintf("unknown startup check mode: %d", s.config.CheckOnStartup), nil)
+		return core.E("startHTTPCheck", fmt.Sprintf("unknown startup check mode: %d", s.config.CheckOnStartup), nil)
 	}
 }
 
@@ -125,7 +125,7 @@ func ParseRepoURL(repoURL string) (owner string, repo string, err error) {
 	}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 	if len(parts) < 2 {
-		return "", "", coreerr.E("ParseRepoURL", fmt.Sprintf("invalid repo URL path: %s", u.Path), nil)
+		return "", "", core.E("ParseRepoURL", fmt.Sprintf("invalid repo URL path: %s", u.Path), nil)
 	}
 	return parts[0], parts[1], nil
 }

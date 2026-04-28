@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"dappco.re/go/cli/pkg/cli"
+	core "dappco.re/go"
 	"github.com/spf13/cobra"
 )
 
@@ -22,10 +22,6 @@ var (
 	updateCheck    bool
 	updateWatchPID int
 )
-
-func init() {
-	cli.RegisterCommands(AddUpdateCommands)
-}
 
 // AddUpdateCommands registers the update command and subcommands.
 func AddUpdateCommands(root *cobra.Command) {
@@ -49,7 +45,9 @@ Examples:
 	updateCmd.PersistentFlags().BoolVar(&updateForce, "force", false, "Force update even if already on latest version")
 	updateCmd.Flags().BoolVar(&updateCheck, "check", false, "Only check for updates, do not apply")
 	updateCmd.Flags().IntVar(&updateWatchPID, "watch-pid", 0, "Internal: watch for parent PID to die then restart")
-	_ = updateCmd.Flags().MarkHidden("watch-pid")
+	if err := updateCmd.Flags().MarkHidden("watch-pid"); err != nil {
+		panic(err)
+	}
 
 	updateCmd.AddCommand(&cobra.Command{
 		Use:   "check",
@@ -71,12 +69,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return watchAndRestart(updateWatchPID)
 	}
 
-	currentVersion := cli.AppVersion
+	currentVersion := Version
 	normalizedChannel := normaliseGitHubChannel(updateChannel)
 
-	cli.Print("%s %s\n", cli.DimStyle.Render("Current version:"), cli.ValueStyle.Render(currentVersion))
-	cli.Print("%s %s/%s\n", cli.DimStyle.Render("Platform:"), runtime.GOOS, runtime.GOARCH)
-	cli.Print("%s %s\n\n", cli.DimStyle.Render("Channel:"), normalizedChannel)
+	fmt.Printf("Current version: %s\n", currentVersion)
+	fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("Channel: %s\n\n", normalizedChannel)
 
 	// Handle dev channel specially - it's a prerelease tag, not a semver channel
 	if normalizedChannel == "dev" {
@@ -86,30 +84,27 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Check for newer version
 	release, updateAvailable, err := CheckForNewerVersion(repoOwner, repoName, normalizedChannel, true)
 	if err != nil {
-		return cli.Wrap(err, "failed to check for updates")
+		return updateCommandError(err, "failed to check for updates")
 	}
 
 	if release == nil {
-		cli.Print("%s No releases found in %s channel\n", cli.WarningStyle.Render("!"), normalizedChannel)
+		fmt.Printf("! No releases found in %s channel\n", normalizedChannel)
 		return nil
 	}
 
 	if !updateAvailable && !updateForce {
-		cli.Print("%s Already on latest version (%s)\n",
-			cli.SuccessStyle.Render(cli.Glyph(":check:")),
-			release.TagName)
+		fmt.Printf("OK Already on latest version (%s)\n", release.TagName)
 		return nil
 	}
 
-	cli.Print("%s %s\n", cli.DimStyle.Render("Latest version:"), cli.SuccessStyle.Render(release.TagName))
+	fmt.Printf("Latest version: %s\n", release.TagName)
 
 	if updateCheck {
 		if updateAvailable {
-			cli.Print("\n%s Update available: %s → %s\n",
-				cli.WarningStyle.Render("!"),
+			fmt.Printf("\n! Update available: %s -> %s\n",
 				currentVersion,
 				release.TagName)
-			cli.Print("Run %s to update\n", cli.ValueStyle.Render("core update"))
+			fmt.Println("Run core update to update")
 		}
 		return nil
 	}
@@ -117,23 +112,23 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Spawn watcher before applying update
 	if err := spawnWatcher(); err != nil {
 		// If watcher fails, continue anyway - update will still work
-		cli.Print("%s Could not spawn restart watcher: %v\n", cli.DimStyle.Render("!"), err)
+		fmt.Printf("! Could not spawn restart watcher: %v\n", err)
 	}
 
 	// Apply update
-	cli.Print("\n%s Downloading update...\n", cli.DimStyle.Render("→"))
+	fmt.Println("\n-> Downloading update...")
 
 	downloadURL, err := GetDownloadURL(release, "")
 	if err != nil {
-		return cli.Wrap(err, "failed to get download URL")
+		return updateCommandError(err, "failed to get download URL")
 	}
 
 	if err := DoUpdate(downloadURL); err != nil {
-		return cli.Wrap(err, "failed to apply update")
+		return updateCommandError(err, "failed to apply update")
 	}
 
-	cli.Print("%s Updated to %s\n", cli.SuccessStyle.Render(cli.Glyph(":check:")), release.TagName)
-	cli.Print("%s Restarting...\n", cli.DimStyle.Render("→"))
+	fmt.Printf("OK Updated to %s\n", release.TagName)
+	fmt.Println("-> Restarting...")
 
 	return nil
 }
@@ -153,31 +148,31 @@ func handleDevUpdate(currentVersion string) error {
 		return handleDevTagUpdate(currentVersion)
 	}
 
-	cli.Print("%s %s\n", cli.DimStyle.Render("Latest dev:"), cli.ValueStyle.Render(release.TagName))
+	fmt.Printf("Latest dev: %s\n", release.TagName)
 
 	if updateCheck {
-		cli.Print("\nRun %s to update\n", cli.ValueStyle.Render("core update --channel=dev"))
+		fmt.Println("\nRun core update --channel=dev to update")
 		return nil
 	}
 
 	// Spawn watcher before applying update
 	if err := spawnWatcher(); err != nil {
-		cli.Print("%s Could not spawn restart watcher: %v\n", cli.DimStyle.Render("!"), err)
+		fmt.Printf("! Could not spawn restart watcher: %v\n", err)
 	}
 
-	cli.Print("\n%s Downloading update...\n", cli.DimStyle.Render("→"))
+	fmt.Println("\n-> Downloading update...")
 
 	downloadURL, err := GetDownloadURL(release, "")
 	if err != nil {
-		return cli.Wrap(err, "failed to get download URL")
+		return updateCommandError(err, "failed to get download URL")
 	}
 
 	if err := DoUpdate(downloadURL); err != nil {
-		return cli.Wrap(err, "failed to apply update")
+		return updateCommandError(err, "failed to apply update")
 	}
 
-	cli.Print("%s Updated to %s\n", cli.SuccessStyle.Render(cli.Glyph(":check:")), release.TagName)
-	cli.Print("%s Restarting...\n", cli.DimStyle.Render("→"))
+	fmt.Printf("OK Updated to %s\n", release.TagName)
+	fmt.Println("-> Restarting...")
 
 	return nil
 }
@@ -194,26 +189,30 @@ func handleDevTagUpdate(currentVersion string) error {
 		downloadURL += ".exe"
 	}
 
-	cli.Print("%s dev (rolling)\n", cli.DimStyle.Render("Latest:"))
+	fmt.Println("Latest: dev (rolling)")
 
 	if updateCheck {
-		cli.Print("\nRun %s to update\n", cli.ValueStyle.Render("core update --channel=dev"))
+		fmt.Println("\nRun core update --channel=dev to update")
 		return nil
 	}
 
 	// Spawn watcher before applying update
 	if err := spawnWatcher(); err != nil {
-		cli.Print("%s Could not spawn restart watcher: %v\n", cli.DimStyle.Render("!"), err)
+		fmt.Printf("! Could not spawn restart watcher: %v\n", err)
 	}
 
-	cli.Print("\n%s Downloading from dev release...\n", cli.DimStyle.Render("→"))
+	fmt.Println("\n-> Downloading from dev release...")
 
 	if err := DoUpdate(downloadURL); err != nil {
-		return cli.Wrap(err, "failed to apply update")
+		return updateCommandError(err, "failed to apply update")
 	}
 
-	cli.Print("%s Updated to latest dev build\n", cli.SuccessStyle.Render(cli.Glyph(":check:")))
-	cli.Print("%s Restarting...\n", cli.DimStyle.Render("→"))
+	fmt.Println("OK Updated to latest dev build")
+	fmt.Println("-> Restarting...")
 
 	return nil
+}
+
+func updateCommandError(err error, msg string) error {
+	return core.Wrap(err, "update.command", msg)
 }

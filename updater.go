@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	coreerr "dappco.re/go/log"
+	core "dappco.re/go"
 	"github.com/minio/selfupdate"
 	"golang.org/x/mod/semver"
 )
@@ -34,27 +34,25 @@ var DoUpdate = func(url string) error {
 	client := NewHTTPClient()
 	req, err := newAgentRequest(context.Background(), "GET", url)
 	if err != nil {
-		return coreerr.E("DoUpdate", "failed to create update request", err)
+		return core.E("DoUpdate", "failed to create update request", err)
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return coreerr.E("DoUpdate", "failed to download update", err)
+		return core.E("DoUpdate", "failed to download update", err)
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
+	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return coreerr.E("DoUpdate", fmt.Sprintf("failed to download update: %s", resp.Status), nil)
+		return core.E("DoUpdate", fmt.Sprintf("failed to download update: %s", resp.Status), nil)
 	}
 
 	err = selfupdate.Apply(resp.Body, selfupdate.Options{})
 	if err != nil {
 		if rerr := selfupdate.RollbackError(err); rerr != nil {
-			return coreerr.E("DoUpdate", "failed to rollback from failed update", rerr)
+			return core.E("DoUpdate", "failed to rollback from failed update", rerr)
 		}
-		return coreerr.E("DoUpdate", "update failed", err)
+		return core.E("DoUpdate", "update failed", err)
 	}
 	return nil
 }
@@ -68,7 +66,7 @@ var CheckForNewerVersion = func(owner, repo, channel string, forceSemVerPrefix b
 
 	release, err := client.GetLatestRelease(ctx, owner, repo, channel)
 	if err != nil {
-		return nil, false, coreerr.E("CheckForNewerVersion", "error fetching latest release", err)
+		return nil, false, core.E("CheckForNewerVersion", "error fetching latest release", err)
 	}
 
 	if release == nil {
@@ -111,7 +109,7 @@ var CheckForUpdates = func(owner, repo, channel string, forceSemVerPrefix bool, 
 
 	downloadURL, err := GetDownloadURL(release, releaseURLFormat)
 	if err != nil {
-		return coreerr.E("CheckForUpdates", "error getting download URL", err)
+		return core.E("CheckForUpdates", "error getting download URL", err)
 	}
 
 	return DoUpdate(downloadURL)
@@ -164,7 +162,7 @@ var CheckForUpdatesByPullRequest = func(owner, repo string, prNumber int, releas
 
 	release, err := client.GetReleaseByPullRequest(ctx, owner, repo, prNumber)
 	if err != nil {
-		return coreerr.E("CheckForUpdatesByPullRequest", "error fetching release for pull request", err)
+		return core.E("CheckForUpdatesByPullRequest", "error fetching release for pull request", err)
 	}
 
 	if release == nil {
@@ -176,7 +174,7 @@ var CheckForUpdatesByPullRequest = func(owner, repo string, prNumber int, releas
 
 	downloadURL, err := GetDownloadURL(release, releaseURLFormat)
 	if err != nil {
-		return coreerr.E("CheckForUpdatesByPullRequest", "error getting download URL", err)
+		return core.E("CheckForUpdatesByPullRequest", "error getting download URL", err)
 	}
 
 	return DoUpdate(downloadURL)
@@ -240,4 +238,14 @@ func formatVersionForDisplay(version string, forceSemVerPrefix bool) string {
 		return strings.TrimPrefix(version, "v")
 	}
 	return version
+}
+
+func closeResponseBody(body io.Closer) {
+	if body == nil {
+		return
+	}
+	if err := body.Close(); err != nil {
+		// Close errors are not actionable for update discovery/download response bodies.
+		return
+	}
 }

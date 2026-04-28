@@ -5,8 +5,7 @@ import (
 	"net/http" // Note: AX-6 - structural HTTP transport boundary for update discovery responses.
 	"net/url"
 
-	"dappco.re/go/core"
-	coreerr "dappco.re/go/log"
+	"dappco.re/go"
 )
 
 // GenericUpdateInfo holds the information from a latest.json file.
@@ -29,7 +28,7 @@ type GenericUpdateInfo struct {
 func GetLatestUpdateFromURL(baseURL string) (*GenericUpdateInfo, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, coreerr.E("GetLatestUpdateFromURL", "invalid base URL", err)
+		return nil, core.E("GetLatestUpdateFromURL", "invalid base URL", err)
 	}
 
 	// Append latest.json to the path
@@ -37,38 +36,38 @@ func GetLatestUpdateFromURL(baseURL string) (*GenericUpdateInfo, error) {
 
 	req, err := newAgentRequest(context.Background(), "GET", u.String())
 	if err != nil {
-		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to create update check request", err)
+		return nil, core.E("GetLatestUpdateFromURL", "failed to create update check request", err)
 	}
 
 	resp, err := NewHTTPClient().Do(req)
 	if err != nil {
-		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to fetch latest.json", err)
+		return nil, core.E("GetLatestUpdateFromURL", "failed to fetch latest.json", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		_ = resp.Body.Close()
-		return nil, coreerr.E("GetLatestUpdateFromURL", core.Sprintf("failed to fetch latest.json: status code %d", resp.StatusCode), nil)
+		closeResponseBody(resp.Body)
+		return nil, core.E("GetLatestUpdateFromURL", core.Sprintf("failed to fetch latest.json: status code %d", resp.StatusCode), nil)
 	}
 
 	body := core.ReadAll(resp.Body)
 	if !body.OK {
 		if readErr, ok := body.Value.(error); ok {
-			return nil, coreerr.E("GetLatestUpdateFromURL", "failed to read latest.json", readErr)
+			return nil, core.E("GetLatestUpdateFromURL", "failed to read latest.json", readErr)
 		}
-		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to read latest.json", nil)
+		return nil, core.E("GetLatestUpdateFromURL", "failed to read latest.json", nil)
 	}
 
 	var info GenericUpdateInfo
 	// AX-6: latest.json is an HTTP response body boundary; decode through Core JSON.
 	if result := core.JSONUnmarshal([]byte(body.Value.(string)), &info); !result.OK {
 		if parseErr, ok := result.Value.(error); ok {
-			return nil, coreerr.E("GetLatestUpdateFromURL", "failed to parse latest.json", parseErr)
+			return nil, core.E("GetLatestUpdateFromURL", "failed to parse latest.json", parseErr)
 		}
-		return nil, coreerr.E("GetLatestUpdateFromURL", "failed to parse latest.json", nil)
+		return nil, core.E("GetLatestUpdateFromURL", "failed to parse latest.json", nil)
 	}
 
 	if info.Version == "" || info.URL == "" {
-		return nil, coreerr.E("GetLatestUpdateFromURL", "invalid latest.json content: version or url is missing", nil)
+		return nil, core.E("GetLatestUpdateFromURL", "invalid latest.json content: version or url is missing", nil)
 	}
 
 	return &info, nil

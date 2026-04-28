@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	coreerr "dappco.re/go/log"
+	core "dappco.re/go"
 	"golang.org/x/oauth2"
 )
 
@@ -84,7 +84,7 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			_ = resp.Body.Close()
+			closeResponseBody(resp.Body)
 			// Try organization endpoint
 			url = fmt.Sprintf("%s/orgs/%s/repos", apiURL, userOrOrg)
 			req, err = newAgentRequest(ctx, "GET", url)
@@ -98,16 +98,16 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			_ = resp.Body.Close()
-			return nil, coreerr.E("github.getPublicReposWithAPIURL", fmt.Sprintf("failed to fetch repos: %s", resp.Status), nil)
+			closeResponseBody(resp.Body)
+			return nil, core.E("github.getPublicReposWithAPIURL", fmt.Sprintf("failed to fetch repos: %s", resp.Status), nil)
 		}
 
 		var repos []Repo
 		if err := json.NewDecoder(resp.Body).Decode(&repos); err != nil {
-			_ = resp.Body.Close()
+			closeResponseBody(resp.Body)
 			return nil, err
 		}
-		_ = resp.Body.Close()
+		closeResponseBody(resp.Body)
 
 		for _, repo := range repos {
 			allCloneURLs = append(allCloneURLs, repo.CloneURL)
@@ -153,10 +153,10 @@ func (g *githubClient) GetLatestRelease(ctx context.Context, owner, repo, channe
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, coreerr.E("github.GetLatestRelease", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
+		return nil, core.E("github.GetLatestRelease", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
 	}
 
 	var releases []Release
@@ -207,10 +207,10 @@ func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo 
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, coreerr.E("github.GetReleaseByPullRequest", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
+		return nil, core.E("github.GetReleaseByPullRequest", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
 	}
 
 	var releases []Release
@@ -266,7 +266,7 @@ func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo 
 //	fmt.Println(url) // "https://example.com/download/linux-amd64" (on a Linux AMD64 system)
 func GetDownloadURL(release *Release, releaseURLFormat string) (string, error) {
 	if release == nil {
-		return "", coreerr.E("GetDownloadURL", "no release provided", nil)
+		return "", core.E("GetDownloadURL", "no release provided", nil)
 	}
 
 	if releaseURLFormat != "" {
@@ -298,5 +298,5 @@ func GetDownloadURL(release *Release, releaseURLFormat string) (string, error) {
 		}
 	}
 
-	return "", coreerr.E("GetDownloadURL", fmt.Sprintf("no suitable download asset found for %s/%s", osName, archName), nil)
+	return "", core.E("GetDownloadURL", fmt.Sprintf("no suitable download asset found for %s/%s", osName, archName), nil)
 }

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"runtime"
 
-	coreerr "dappco.re/go/log"
+	core "dappco.re/go"
 )
 
 // mockGithubClient is a mock implementation of the GithubClient interface for testing.
@@ -36,7 +36,7 @@ func (m *mockGithubClient) GetPublicRepos(ctx context.Context, userOrOrg string)
 	if m.getPublicRepos != nil {
 		return m.getPublicRepos(ctx, userOrOrg)
 	}
-	return nil, coreerr.E("mockGithubClient.GetPublicRepos", "not implemented", nil)
+	return nil, core.E("mockGithubClient.GetPublicRepos", "not implemented", nil)
 }
 
 func ExampleCheckForNewerVersion() {

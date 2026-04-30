@@ -5,20 +5,30 @@ import (
 	"testing"
 )
 
+const (
+	tagV100Alpha          = "v1.0.0-alpha.1"
+	tagV100Beta           = "v1.0.0-beta.1"
+	tagV100               = "v1.0.0"
+	tagV200RC1            = "v2.0.0-rc.1"
+	unexpectedErrorFormat = "unexpected error: %v"
+	tagV123               = "v1.2.3"
+	osOnlyDownloadURL     = "https://example.com/os-only"
+)
+
 func TestFilterReleases_Good(t *testing.T) {
 	releases := []Release{
-		{TagName: "v1.0.0-alpha.1", PreRelease: true},
-		{TagName: "v1.0.0-beta.1", PreRelease: true},
-		{TagName: "v1.0.0", PreRelease: false},
+		{TagName: tagV100Alpha, PreRelease: true},
+		{TagName: tagV100Beta, PreRelease: true},
+		{TagName: tagV100, PreRelease: false},
 	}
 
 	tests := []struct {
 		channel string
 		wantTag string
 	}{
-		{"stable", "v1.0.0"},
-		{"alpha", "v1.0.0-alpha.1"},
-		{"beta", "v1.0.0-beta.1"},
+		{"stable", tagV100},
+		{"alpha", tagV100Alpha},
+		{"beta", tagV100Beta},
 	}
 
 	for _, tt := range tests {
@@ -36,7 +46,7 @@ func TestFilterReleases_Good(t *testing.T) {
 
 func TestFilterReleases_Bad(t *testing.T) {
 	releases := []Release{
-		{TagName: "v1.0.0", PreRelease: false},
+		{TagName: tagV100, PreRelease: false},
 	}
 	got := filterReleases(releases, "alpha")
 	if got != nil {
@@ -46,14 +56,14 @@ func TestFilterReleases_Bad(t *testing.T) {
 
 func TestFilterReleases_PreReleaseWithoutLabel(t *testing.T) {
 	releases := []Release{
-		{TagName: "v2.0.0-rc.1", PreRelease: true},
+		{TagName: tagV200RC1, PreRelease: true},
 	}
 	got := filterReleases(releases, "beta")
 	if got == nil {
 		t.Fatal("expected pre-release without alpha/beta label to match beta channel")
 	}
-	if got.TagName != "v2.0.0-rc.1" {
-		t.Errorf("expected tag %q, got %q", "v2.0.0-rc.1", got.TagName)
+	if got.TagName != tagV200RC1 {
+		t.Errorf("expected tag %q, got %q", tagV200RC1, got.TagName)
 	}
 }
 
@@ -63,10 +73,10 @@ func TestDetermineChannel_Good(t *testing.T) {
 		isPreRelease bool
 		want         string
 	}{
-		{"v1.0.0", false, "stable"},
-		{"v1.0.0-alpha.1", false, "alpha"},
+		{tagV100, false, "stable"},
+		{tagV100Alpha, false, "alpha"},
 		{"v1.0.0-ALPHA.1", false, "alpha"},
-		{"v1.0.0-beta.1", false, "beta"},
+		{tagV100Beta, false, "beta"},
 		{"v1.0.0-BETA.1", false, "beta"},
 		{"v1.0.0-rc.1", true, "beta"},
 		{"v1.0.0-rc.1", false, "stable"},
@@ -96,9 +106,9 @@ func TestCheckForUpdatesByTag_UsesCurrentVersionChannel(t *testing.T) {
 		return nil
 	}
 
-	Version = "v2.0.0-rc.1"
+	Version = tagV200RC1
 	if err := CheckForUpdatesByTag("owner", "repo"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 
 	if gotChannel != "beta" {
@@ -122,7 +132,7 @@ func TestCheckOnlyByTag_UsesCurrentVersionChannel(t *testing.T) {
 
 	Version = "v2.0.0-alpha.1"
 	if err := CheckOnlyByTag("owner", "repo"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 
 	if gotChannel != "alpha" {
@@ -135,16 +145,16 @@ func TestGetDownloadURL_Good(t *testing.T) {
 	archName := runtime.GOARCH
 
 	release := &Release{
-		TagName: "v1.2.3",
+		TagName: tagV123,
 		Assets: []ReleaseAsset{
 			{Name: "app-" + osName + "-" + archName, DownloadURL: "https://example.com/full-match"},
-			{Name: "app-" + osName, DownloadURL: "https://example.com/os-only"},
+			{Name: "app-" + osName, DownloadURL: osOnlyDownloadURL},
 		},
 	}
 
 	url, err := GetDownloadURL(release, "")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 	if url != "https://example.com/full-match" {
 		t.Errorf("expected full match URL, got %q", url)
@@ -155,31 +165,31 @@ func TestGetDownloadURL_OSOnlyFallback(t *testing.T) {
 	osName := runtime.GOOS
 
 	release := &Release{
-		TagName: "v1.2.3",
+		TagName: tagV123,
 		Assets: []ReleaseAsset{
 			{Name: "app-other-other", DownloadURL: "https://example.com/other"},
-			{Name: "app-" + osName + "-other", DownloadURL: "https://example.com/os-only"},
+			{Name: "app-" + osName + "-other", DownloadURL: osOnlyDownloadURL},
 		},
 	}
 
 	url, err := GetDownloadURL(release, "")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
-	if url != "https://example.com/os-only" {
+	if url != osOnlyDownloadURL {
 		t.Errorf("expected OS-only fallback URL, got %q", url)
 	}
 }
 
 func TestGetDownloadURL_WithFormat(t *testing.T) {
-	release := &Release{TagName: "v1.2.3"}
+	release := &Release{TagName: tagV123}
 
 	url, err := GetDownloadURL(release, "https://example.com/{tag}/{os}/{arch}")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(unexpectedErrorFormat, err)
 	}
 
-	expected := "https://example.com/v1.2.3/" + runtime.GOOS + "/" + runtime.GOARCH
+	expected := "https://example.com/" + tagV123 + "/" + runtime.GOOS + "/" + runtime.GOARCH
 	if url != expected {
 		t.Errorf("expected %q, got %q", expected, url)
 	}
@@ -194,7 +204,7 @@ func TestGetDownloadURL_Bad(t *testing.T) {
 
 	// No matching assets
 	release := &Release{
-		TagName: "v1.2.3",
+		TagName: tagV123,
 		Assets: []ReleaseAsset{
 			{Name: "app-unknownos-unknownarch", DownloadURL: "https://example.com/other"},
 		},
@@ -210,8 +220,8 @@ func TestFormatVersionForComparison(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"1.0.0", "v1.0.0"},
-		{"v1.0.0", "v1.0.0"},
+		{"1.0.0", tagV100},
+		{tagV100, tagV100},
 		{"", ""},
 	}
 
@@ -231,9 +241,9 @@ func TestFormatVersionForDisplay(t *testing.T) {
 		force   bool
 		want    string
 	}{
-		{"1.0.0", true, "v1.0.0"},
-		{"v1.0.0", true, "v1.0.0"},
-		{"v1.0.0", false, "1.0.0"},
+		{"1.0.0", true, tagV100},
+		{tagV100, true, tagV100},
+		{tagV100, false, "1.0.0"},
 		{"1.0.0", false, "1.0.0"},
 	}
 

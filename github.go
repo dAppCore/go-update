@@ -74,27 +74,10 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		req, err := newAgentRequest(ctx, "GET", url)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
 
-		if resp.StatusCode != http.StatusOK {
-			closeResponseBody(resp.Body)
-			// Try organization endpoint
-			url = fmt.Sprintf("%s/orgs/%s/repos", apiURL, userOrOrg)
-			req, err = newAgentRequest(ctx, "GET", url)
-			if err != nil {
-				return nil, err
-			}
-			resp, err = client.Do(req)
-			if err != nil {
-				return nil, err
-			}
+		resp, err := getReposPage(ctx, client, apiURL, userOrOrg, url)
+		if err != nil {
+			return nil, err
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -113,11 +96,7 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 			allCloneURLs = append(allCloneURLs, repo.CloneURL)
 		}
 
-		linkHeader := resp.Header.Get("Link")
-		if linkHeader == "" {
-			break
-		}
-		nextURL := g.findNextURL(linkHeader)
+		nextURL := g.findNextURL(resp.Header.Get("Link"))
 		if nextURL == "" {
 			break
 		}
@@ -125,6 +104,28 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 	}
 
 	return allCloneURLs, nil
+}
+
+func getReposPage(ctx context.Context, client *http.Client, apiURL, userOrOrg, url string) (*http.Response, error) {
+	resp, err := getURL(ctx, client, url)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return resp, nil
+	}
+
+	closeResponseBody(resp.Body)
+	return getURL(ctx, client, fmt.Sprintf("%s/orgs/%s/repos", apiURL, userOrOrg))
+}
+
+func getURL(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
+	req, err := newAgentRequest(ctx, "GET", url)
+	if err != nil {
+		return nil, err
+	}
+	return client.Do(req)
 }
 
 func (g *githubClient) findNextURL(linkHeader string) string {

@@ -12,6 +12,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+const currentVersionUpToDateFormat = "Current version %s is up-to-date with latest release %s.\n"
+
 // Version holds the current version of the application.
 // It is set at build time via ldflags or fallback to the version in package.json.
 var Version = PkgVersion
@@ -94,7 +96,7 @@ var CheckForUpdates = func(owner, repo, channel string, forceSemVerPrefix bool, 
 
 	if !updateAvailable {
 		if release != nil {
-			fmt.Printf("Current version %s is up-to-date with latest release %s.\n",
+			fmt.Printf(currentVersionUpToDateFormat,
 				formatVersionForDisplay(Version, forceSemVerPrefix),
 				formatVersionForDisplay(release.TagName, forceSemVerPrefix))
 		} else {
@@ -125,7 +127,7 @@ var CheckOnly = func(owner, repo, channel string, forceSemVerPrefix bool, releas
 
 	if !updateAvailable {
 		if release != nil {
-			fmt.Printf("Current version %s is up-to-date with latest release %s.\n",
+			fmt.Printf(currentVersionUpToDateFormat,
 				formatVersionForDisplay(Version, forceSemVerPrefix),
 				formatVersionForDisplay(release.TagName, forceSemVerPrefix))
 		} else {
@@ -192,7 +194,7 @@ var CheckForUpdatesHTTP = func(baseURL string) error {
 	vLatest := formatVersionForComparison(info.Version)
 
 	if semver.Compare(vCurrent, vLatest) >= 0 {
-		fmt.Printf("Current version %s is up-to-date with latest release %s.\n", Version, info.Version)
+		fmt.Printf(currentVersionUpToDateFormat, Version, info.Version)
 		return nil
 	}
 
@@ -212,7 +214,7 @@ var CheckOnlyHTTP = func(baseURL string) error {
 	vLatest := formatVersionForComparison(info.Version)
 
 	if semver.Compare(vCurrent, vLatest) >= 0 {
-		fmt.Printf("Current version %s is up-to-date with latest release %s.\n", Version, info.Version)
+		fmt.Printf(currentVersionUpToDateFormat, Version, info.Version)
 		return nil
 	}
 

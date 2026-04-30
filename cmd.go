@@ -11,8 +11,11 @@ import (
 
 // Repository configuration for updates
 const (
-	repoOwner = "core"
-	repoName  = "cli"
+	repoOwner               = "core"
+	repoName                = "cli"
+	restartWatcherWarning   = "! Could not spawn restart watcher: %v\n"
+	failedToApplyUpdate     = "failed to apply update"
+	restartingUpdateMessage = "-> Restarting..."
 )
 
 // Command flags
@@ -112,7 +115,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Spawn watcher before applying update
 	if err := spawnWatcher(); err != nil {
 		// If watcher fails, continue anyway - update will still work
-		fmt.Printf("! Could not spawn restart watcher: %v\n", err)
+		fmt.Printf(restartWatcherWarning, err)
 	}
 
 	// Apply update
@@ -124,11 +127,11 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := DoUpdate(downloadURL); err != nil {
-		return updateCommandError(err, "failed to apply update")
+		return updateCommandError(err, failedToApplyUpdate)
 	}
 
 	fmt.Printf("OK Updated to %s\n", release.TagName)
-	fmt.Println("-> Restarting...")
+	fmt.Println(restartingUpdateMessage)
 
 	return nil
 }
@@ -157,7 +160,7 @@ func handleDevUpdate(currentVersion string) error {
 
 	// Spawn watcher before applying update
 	if err := spawnWatcher(); err != nil {
-		fmt.Printf("! Could not spawn restart watcher: %v\n", err)
+		fmt.Printf(restartWatcherWarning, err)
 	}
 
 	fmt.Println("\n-> Downloading update...")
@@ -168,11 +171,11 @@ func handleDevUpdate(currentVersion string) error {
 	}
 
 	if err := DoUpdate(downloadURL); err != nil {
-		return updateCommandError(err, "failed to apply update")
+		return updateCommandError(err, failedToApplyUpdate)
 	}
 
 	fmt.Printf("OK Updated to %s\n", release.TagName)
-	fmt.Println("-> Restarting...")
+	fmt.Println(restartingUpdateMessage)
 
 	return nil
 }
@@ -198,17 +201,17 @@ func handleDevTagUpdate(currentVersion string) error {
 
 	// Spawn watcher before applying update
 	if err := spawnWatcher(); err != nil {
-		fmt.Printf("! Could not spawn restart watcher: %v\n", err)
+		fmt.Printf(restartWatcherWarning, err)
 	}
 
 	fmt.Println("\n-> Downloading from dev release...")
 
 	if err := DoUpdate(downloadURL); err != nil {
-		return updateCommandError(err, "failed to apply update")
+		return updateCommandError(err, failedToApplyUpdate)
 	}
 
 	fmt.Println("OK Updated to latest dev build")
-	fmt.Println("-> Restarting...")
+	fmt.Println(restartingUpdateMessage)
 
 	return nil
 }

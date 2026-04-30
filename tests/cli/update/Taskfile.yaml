@@ -1,3 +1,4 @@
+---
 version: "3"
 
 tasks:
@@ -25,5 +26,6 @@ tasks:
           -droprequire=dappco.re/go/inference \
           -require=forge.lthn.ai/core/cli@v0.3.6 \
           -require=forge.lthn.ai/core/go-log@v0.0.4
-        GOFLAGS="-modfile=$modfile -mod=mod" go build -o "$bin" ./tests/cli/update
+        GOFLAGS="-modfile=$modfile -mod=mod" \
+          go build -o "$bin" ./tests/cli/update
         "$bin"

@@ -14,10 +14,14 @@ import { App } from './app';
   ]
 })
 export class AppModule implements DoBootstrap {
-  constructor(private injector: Injector) {
-    const el = createCustomElement(App, { injector });
-    customElements.define('core-element-template', el);
+  private readonly injector: Injector;
+
+  constructor(injector: Injector) {
+    this.injector = injector;
   }
 
-  ngDoBootstrap() {}
+  ngDoBootstrap(): void {
+    const el = createCustomElement(App, { injector: this.injector });
+    customElements.define('core-element-template', el);
+  }
 }

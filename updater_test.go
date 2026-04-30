@@ -11,6 +11,12 @@ import (
 	core "dappco.re/go"
 )
 
+const (
+	updaterTestVersionV110       = "v1.1.0"
+	updaterTestAssetFormat       = "test-asset-%s-%s"
+	updaterTestUpdatePrintFormat = "Update would be applied from: %s"
+)
+
 // mockGithubClient is a mock implementation of the GithubClient interface for testing.
 type mockGithubClient struct {
 	getLatestRelease      func(ctx context.Context, owner, repo, channel string) (*Release, error)
@@ -46,7 +52,7 @@ func ExampleCheckForNewerVersion() {
 	NewGithubClient = func() GithubClient {
 		return &mockGithubClient{
 			getLatestRelease: func(ctx context.Context, owner, repo, channel string) (*Release, error) {
-				return &Release{TagName: "v1.1.0"}, nil
+				return &Release{TagName: updaterTestVersionV110}, nil
 			},
 		}
 	}
@@ -78,15 +84,15 @@ func ExampleCheckForUpdates() {
 		return &mockGithubClient{
 			getLatestRelease: func(ctx context.Context, owner, repo, channel string) (*Release, error) {
 				return &Release{
-					TagName: "v1.1.0",
-					Assets:  []ReleaseAsset{{Name: fmt.Sprintf("test-asset-%s-%s", runtime.GOOS, runtime.GOARCH), DownloadURL: "http://example.com/asset"}},
+					TagName: updaterTestVersionV110,
+					Assets:  []ReleaseAsset{{Name: fmt.Sprintf(updaterTestAssetFormat, runtime.GOOS, runtime.GOARCH), DownloadURL: "http://example.com/asset"}},
 				}, nil
 			},
 		}
 	}
 
 	DoUpdate = func(url string) error {
-		fmt.Printf("Update would be applied from: %s", url)
+		fmt.Printf(updaterTestUpdatePrintFormat, url)
 		return nil
 	}
 
@@ -107,7 +113,7 @@ func ExampleCheckOnly() {
 	NewGithubClient = func() GithubClient {
 		return &mockGithubClient{
 			getLatestRelease: func(ctx context.Context, owner, repo, channel string) (*Release, error) {
-				return &Release{TagName: "v1.1.0"}, nil
+				return &Release{TagName: updaterTestVersionV110}, nil
 			},
 		}
 	}
@@ -134,8 +140,8 @@ func ExampleCheckForUpdatesByTag() {
 			getLatestRelease: func(ctx context.Context, owner, repo, channel string) (*Release, error) {
 				if channel == "stable" {
 					return &Release{
-						TagName: "v1.1.0",
-						Assets:  []ReleaseAsset{{Name: fmt.Sprintf("test-asset-%s-%s", runtime.GOOS, runtime.GOARCH), DownloadURL: "http://example.com/asset"}},
+						TagName: updaterTestVersionV110,
+						Assets:  []ReleaseAsset{{Name: fmt.Sprintf(updaterTestAssetFormat, runtime.GOOS, runtime.GOARCH), DownloadURL: "http://example.com/asset"}},
 					}, nil
 				}
 				return nil, nil
@@ -144,7 +150,7 @@ func ExampleCheckForUpdatesByTag() {
 	}
 
 	DoUpdate = func(url string) error {
-		fmt.Printf("Update would be applied from: %s", url)
+		fmt.Printf(updaterTestUpdatePrintFormat, url)
 		return nil
 	}
 
@@ -166,7 +172,7 @@ func ExampleCheckOnlyByTag() {
 		return &mockGithubClient{
 			getLatestRelease: func(ctx context.Context, owner, repo, channel string) (*Release, error) {
 				if channel == "stable" {
-					return &Release{TagName: "v1.1.0"}, nil
+					return &Release{TagName: updaterTestVersionV110}, nil
 				}
 				return nil, nil
 			},
@@ -195,8 +201,8 @@ func ExampleCheckForUpdatesByPullRequest() {
 			getReleaseByPR: func(ctx context.Context, owner, repo string, prNumber int) (*Release, error) {
 				if prNumber == 123 {
 					return &Release{
-						TagName: "v1.1.0-alpha.pr.123",
-						Assets:  []ReleaseAsset{{Name: fmt.Sprintf("test-asset-%s-%s", runtime.GOOS, runtime.GOARCH), DownloadURL: "http://example.com/asset-pr"}},
+						TagName: updaterTestVersionV110 + "-alpha.pr.123",
+						Assets:  []ReleaseAsset{{Name: fmt.Sprintf(updaterTestAssetFormat, runtime.GOOS, runtime.GOARCH), DownloadURL: "http://example.com/asset-pr"}},
 					}, nil
 				}
 				return nil, nil
@@ -205,7 +211,7 @@ func ExampleCheckForUpdatesByPullRequest() {
 	}
 
 	DoUpdate = func(url string) error {
-		fmt.Printf("Update would be applied from: %s", url)
+		fmt.Printf(updaterTestUpdatePrintFormat, url)
 		return nil
 	}
 
@@ -231,7 +237,7 @@ func ExampleCheckForUpdatesHTTP() {
 	originalDoUpdate := DoUpdate
 	defer func() { DoUpdate = originalDoUpdate }()
 	DoUpdate = func(url string) error {
-		fmt.Printf("Update would be applied from: %s", url)
+		fmt.Printf(updaterTestUpdatePrintFormat, url)
 		return nil
 	}
 

@@ -12,21 +12,28 @@ import (
 	"github.com/Snider/Borg/pkg/mocks"
 )
 
+const (
+	githubTestAPIURL            = "https://api.github.com"
+	githubTestUserReposURL      = githubTestAPIURL + "/users/testuser/repos"
+	githubTestContentTypeHeader = "Content-Type"
+	githubTestApplicationJSON   = "application/json"
+)
+
 func TestGetPublicRepos(t *testing.T) {
 	mockClient := mocks.NewMockClient(map[string]*http.Response{
-		"https://api.github.com/users/testuser/repos": {
+		githubTestUserReposURL: {
 			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Header:     http.Header{githubTestContentTypeHeader: []string{githubTestApplicationJSON}},
 			Body:       io.NopCloser(bytes.NewBufferString(`[{"clone_url": "https://github.com/testuser/repo1.git"}]`)),
 		},
-		"https://api.github.com/orgs/testorg/repos": {
+		githubTestAPIURL + "/orgs/testorg/repos": {
 			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": []string{"application/json"}, "Link": []string{`<https://api.github.com/organizations/123/repos?page=2>; rel="next"`}},
+			Header:     http.Header{githubTestContentTypeHeader: []string{githubTestApplicationJSON}, "Link": []string{`<https://api.github.com/organizations/123/repos?page=2>; rel="next"`}},
 			Body:       io.NopCloser(bytes.NewBufferString(`[{"clone_url": "https://github.com/testorg/repo1.git"}]`)),
 		},
-		"https://api.github.com/organizations/123/repos?page=2": {
+		githubTestAPIURL + "/organizations/123/repos?page=2": {
 			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Header:     http.Header{githubTestContentTypeHeader: []string{githubTestApplicationJSON}},
 			Body:       io.NopCloser(bytes.NewBufferString(`[{"clone_url": "https://github.com/testorg/repo2.git"}]`)),
 		},
 	})
@@ -41,7 +48,7 @@ func TestGetPublicRepos(t *testing.T) {
 	}()
 
 	// Test user repos
-	repos, err := client.getPublicReposWithAPIURL(context.Background(), "https://api.github.com", "testuser")
+	repos, err := client.getPublicReposWithAPIURL(context.Background(), githubTestAPIURL, "testuser")
 	if err != nil {
 		t.Fatalf("getPublicReposWithAPIURL for user failed: %v", err)
 	}
@@ -50,7 +57,7 @@ func TestGetPublicRepos(t *testing.T) {
 	}
 
 	// Test org repos with pagination
-	repos, err = client.getPublicReposWithAPIURL(context.Background(), "https://api.github.com", "testorg")
+	repos, err = client.getPublicReposWithAPIURL(context.Background(), githubTestAPIURL, "testorg")
 	if err != nil {
 		t.Fatalf("getPublicReposWithAPIURL for org failed: %v", err)
 	}
@@ -59,19 +66,19 @@ func TestGetPublicRepos(t *testing.T) {
 	}
 }
 func TestGetPublicRepos_Error(t *testing.T) {
-	u, _ := url.Parse("https://api.github.com/users/testuser/repos")
+	u, _ := url.Parse(githubTestUserReposURL)
 	mockClient := mocks.NewMockClient(map[string]*http.Response{
-		"https://api.github.com/users/testuser/repos": {
+		githubTestUserReposURL: {
 			StatusCode: http.StatusNotFound,
 			Status:     "404 Not Found",
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Header:     http.Header{githubTestContentTypeHeader: []string{githubTestApplicationJSON}},
 			Body:       io.NopCloser(bytes.NewBufferString("")),
 			Request:    &http.Request{Method: "GET", URL: u},
 		},
-		"https://api.github.com/orgs/testuser/repos": {
+		githubTestAPIURL + "/orgs/testuser/repos": {
 			StatusCode: http.StatusNotFound,
 			Status:     "404 Not Found",
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Header:     http.Header{githubTestContentTypeHeader: []string{githubTestApplicationJSON}},
 			Body:       io.NopCloser(bytes.NewBufferString("")),
 			Request:    &http.Request{Method: "GET", URL: u},
 		},
@@ -88,7 +95,7 @@ func TestGetPublicRepos_Error(t *testing.T) {
 	}()
 
 	// Test user repos
-	_, err := client.getPublicReposWithAPIURL(context.Background(), "https://api.github.com", "testuser")
+	_, err := client.getPublicReposWithAPIURL(context.Background(), githubTestAPIURL, "testuser")
 	if err.Error() != expectedErr {
 		t.Fatalf("getPublicReposWithAPIURL for user failed: expected %q, got %q", expectedErr, err.Error())
 	}

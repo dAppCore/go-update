@@ -6,6 +6,25 @@ import (
 	"testing"
 )
 
+const serviceTestGitHubRepoURL = "https://github.com/owner/repo"
+
+type updateServiceStartCase struct {
+	name                string
+	config              UpdateServiceConfig
+	checkOnlyGitHub     int
+	checkAndDoGitHub    int
+	checkOnlyHTTPCalls  int
+	checkAndDoHTTPCalls int
+	expectError         bool
+}
+
+type updateServiceStartCalls struct {
+	checkOnlyGitHub  int
+	checkAndDoGitHub int
+	checkOnlyHTTP    int
+	checkAndDoHTTP   int
+}
+
 func TestNewUpdateService(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -17,7 +36,7 @@ func TestNewUpdateService(t *testing.T) {
 		{
 			name: "Valid GitHub URL",
 			config: UpdateServiceConfig{
-				RepoURL: "https://github.com/owner/repo",
+				RepoURL: serviceTestGitHubRepoURL,
 			},
 			isGitHub:    true,
 			wantChannel: "stable",
@@ -32,7 +51,7 @@ func TestNewUpdateService(t *testing.T) {
 		{
 			name: "GitHub channel is normalised",
 			config: UpdateServiceConfig{
-				RepoURL: "https://github.com/owner/repo",
+				RepoURL: serviceTestGitHubRepoURL,
 				Channel: " Beta ",
 			},
 			isGitHub:    true,
@@ -41,7 +60,7 @@ func TestNewUpdateService(t *testing.T) {
 		{
 			name: "GitHub prerelease channel maps to beta",
 			config: UpdateServiceConfig{
-				RepoURL: "https://github.com/owner/repo",
+				RepoURL: serviceTestGitHubRepoURL,
 				Channel: " prerelease ",
 			},
 			isGitHub:    true,
@@ -79,26 +98,18 @@ func TestUpdateService_Start(t *testing.T) {
 	}))
 	defer server.Close()
 
-	testCases := []struct {
-		name                string
-		config              UpdateServiceConfig
-		checkOnlyGitHub     int
-		checkAndDoGitHub    int
-		checkOnlyHTTPCalls  int
-		checkAndDoHTTPCalls int
-		expectError         bool
-	}{
+	testCases := []updateServiceStartCase{
 		{
 			name: "GitHub: NoCheck",
 			config: UpdateServiceConfig{
-				RepoURL:        "https://github.com/owner/repo",
+				RepoURL:        serviceTestGitHubRepoURL,
 				CheckOnStartup: NoCheck,
 			},
 		},
 		{
 			name: "GitHub: CheckOnStartup",
 			config: UpdateServiceConfig{
-				RepoURL:        "https://github.com/owner/repo",
+				RepoURL:        serviceTestGitHubRepoURL,
 				CheckOnStartup: CheckOnStartup,
 			},
 			checkOnlyGitHub: 1,
@@ -106,7 +117,7 @@ func TestUpdateService_Start(t *testing.T) {
 		{
 			name: "GitHub: CheckAndUpdateOnStartup",
 			config: UpdateServiceConfig{
-				RepoURL:        "https://github.com/owner/repo",
+				RepoURL:        serviceTestGitHubRepoURL,
 				CheckOnStartup: CheckAndUpdateOnStartup,
 			},
 			checkAndDoGitHub: 1,
@@ -138,56 +149,73 @@ func TestUpdateService_Start(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var checkOnlyGitHub, checkAndDoGitHub, checkOnlyHTTP, checkAndDoHTTP int
-
-			// Mock GitHub functions
-			originalCheckOnly := CheckOnly
-			CheckOnly = func(owner, repo, channel string, forceSemVerPrefix bool, releaseURLFormat string) error {
-				checkOnlyGitHub++
-				return nil
-			}
-			defer func() { CheckOnly = originalCheckOnly }()
-
-			originalCheckForUpdates := CheckForUpdates
-			CheckForUpdates = func(owner, repo, channel string, forceSemVerPrefix bool, releaseURLFormat string) error {
-				checkAndDoGitHub++
-				return nil
-			}
-			defer func() { CheckForUpdates = originalCheckForUpdates }()
-
-			// Mock HTTP functions
-			originalCheckOnlyHTTP := CheckOnlyHTTP
-			CheckOnlyHTTP = func(baseURL string) error {
-				checkOnlyHTTP++
-				return nil
-			}
-			defer func() { CheckOnlyHTTP = originalCheckOnlyHTTP }()
-
-			originalCheckForUpdatesHTTP := CheckForUpdatesHTTP
-			CheckForUpdatesHTTP = func(baseURL string) error {
-				checkAndDoHTTP++
-				return nil
-			}
-			defer func() { CheckForUpdatesHTTP = originalCheckForUpdatesHTTP }()
-
-			service, _ := NewUpdateService(tc.config)
-			err := service.Start()
-
-			if (err != nil) != tc.expectError {
-				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
-			}
-			if checkOnlyGitHub != tc.checkOnlyGitHub {
-				t.Errorf("Expected GitHub CheckOnly calls: %d, got: %d", tc.checkOnlyGitHub, checkOnlyGitHub)
-			}
-			if checkAndDoGitHub != tc.checkAndDoGitHub {
-				t.Errorf("Expected GitHub CheckForUpdates calls: %d, got: %d", tc.checkAndDoGitHub, checkAndDoGitHub)
-			}
-			if checkOnlyHTTP != tc.checkOnlyHTTPCalls {
-				t.Errorf("Expected HTTP CheckOnly calls: %d, got: %d", tc.checkOnlyHTTPCalls, checkOnlyHTTP)
-			}
-			if checkAndDoHTTP != tc.checkAndDoHTTPCalls {
-				t.Errorf("Expected HTTP CheckForUpdates calls: %d, got: %d", tc.checkAndDoHTTPCalls, checkAndDoHTTP)
-			}
+			runUpdateServiceStartCase(t, tc)
 		})
+	}
+}
+
+func runUpdateServiceStartCase(t *testing.T, tc updateServiceStartCase) {
+	t.Helper()
+
+	calls := stubUpdateChecks(t)
+	service, _ := NewUpdateService(tc.config)
+	err := service.Start()
+
+	assertUpdateServiceStartResult(t, tc, calls, err)
+}
+
+func stubUpdateChecks(t *testing.T) *updateServiceStartCalls {
+	t.Helper()
+
+	calls := &updateServiceStartCalls{}
+
+	originalCheckOnly := CheckOnly
+	CheckOnly = func(_, _, _ string, _ bool, _ string) error {
+		calls.checkOnlyGitHub++
+		return nil
+	}
+	t.Cleanup(func() { CheckOnly = originalCheckOnly })
+
+	originalCheckForUpdates := CheckForUpdates
+	CheckForUpdates = func(_, _, _ string, _ bool, _ string) error {
+		calls.checkAndDoGitHub++
+		return nil
+	}
+	t.Cleanup(func() { CheckForUpdates = originalCheckForUpdates })
+
+	originalCheckOnlyHTTP := CheckOnlyHTTP
+	CheckOnlyHTTP = func(_ string) error {
+		calls.checkOnlyHTTP++
+		return nil
+	}
+	t.Cleanup(func() { CheckOnlyHTTP = originalCheckOnlyHTTP })
+
+	originalCheckForUpdatesHTTP := CheckForUpdatesHTTP
+	CheckForUpdatesHTTP = func(_ string) error {
+		calls.checkAndDoHTTP++
+		return nil
+	}
+	t.Cleanup(func() { CheckForUpdatesHTTP = originalCheckForUpdatesHTTP })
+
+	return calls
+}
+
+func assertUpdateServiceStartResult(t *testing.T, tc updateServiceStartCase, calls *updateServiceStartCalls, err error) {
+	t.Helper()
+
+	if (err != nil) != tc.expectError {
+		t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
+	}
+	if calls.checkOnlyGitHub != tc.checkOnlyGitHub {
+		t.Errorf("Expected GitHub CheckOnly calls: %d, got: %d", tc.checkOnlyGitHub, calls.checkOnlyGitHub)
+	}
+	if calls.checkAndDoGitHub != tc.checkAndDoGitHub {
+		t.Errorf("Expected GitHub CheckForUpdates calls: %d, got: %d", tc.checkAndDoGitHub, calls.checkAndDoGitHub)
+	}
+	if calls.checkOnlyHTTP != tc.checkOnlyHTTPCalls {
+		t.Errorf("Expected HTTP CheckOnly calls: %d, got: %d", tc.checkOnlyHTTPCalls, calls.checkOnlyHTTP)
+	}
+	if calls.checkAndDoHTTP != tc.checkAndDoHTTPCalls {
+		t.Errorf("Expected HTTP CheckForUpdates calls: %d, got: %d", tc.checkAndDoHTTPCalls, calls.checkAndDoHTTP)
 	}
 }

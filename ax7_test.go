@@ -5,6 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const ax7CoreUpdateRepoURL = "https://github.com/core/update"
+
 type ax7ReadCloser struct {
 	Reader
 }
@@ -273,7 +275,7 @@ func TestAX7_GetLatestUpdateFromURL_Ugly(t *T) {
 
 func TestAX7_NewUpdateService_Good(t *T) {
 	service, err := NewUpdateService(UpdateServiceConfig{
-		RepoURL: "https://github.com/core/update",
+		RepoURL: ax7CoreUpdateRepoURL,
 		Channel: " prerelease ",
 	})
 
@@ -304,7 +306,7 @@ func TestAX7_NewUpdateService_Ugly(t *T) {
 }
 
 func TestAX7_ParseRepoURL_Good(t *T) {
-	owner, repo, err := ParseRepoURL("https://github.com/core/update")
+	owner, repo, err := ParseRepoURL(ax7CoreUpdateRepoURL)
 
 	AssertNoError(t, err)
 	AssertEqual(t, "core", owner)
@@ -320,7 +322,7 @@ func TestAX7_ParseRepoURL_Bad(t *T) {
 }
 
 func TestAX7_ParseRepoURL_Ugly(t *T) {
-	owner, repo, err := ParseRepoURL("https://github.com/core/update/tree/main")
+	owner, repo, err := ParseRepoURL(ax7CoreUpdateRepoURL + "/tree/main")
 
 	AssertNoError(t, err)
 	AssertEqual(t, "core", owner)
@@ -339,7 +341,7 @@ func TestAX7_UpdateService_Start_Good(t *T) {
 		return nil
 	}
 	service, err := NewUpdateService(UpdateServiceConfig{
-		RepoURL:        "https://github.com/core/update",
+		RepoURL:        ax7CoreUpdateRepoURL,
 		CheckOnStartup: CheckOnStartup,
 	})
 

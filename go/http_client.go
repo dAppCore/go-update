@@ -14,14 +14,14 @@ var NewHTTPClient = func() *http.Client {
 	return &http.Client{Timeout: defaultHTTPTimeout}
 }
 
-func newAgentRequest(ctx context.Context, method, url string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, url, nil)
-	if err != nil {
-		return nil, err
+func newAgentRequest(ctx context.Context, method, url string) core.Result {
+	r := core.NewHTTPRequestContext(ctx, method, url, nil)
+	if !r.OK {
+		return r
 	}
-
+	req := r.Value.(*http.Request)
 	req.Header.Set("User-Agent", updaterUserAgent())
-	return req, nil
+	return core.Ok(req)
 }
 
 func updaterUserAgent() string {

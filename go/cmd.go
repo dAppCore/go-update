@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"fmt"
 	"runtime"
 
 	core "dappco.re/go"
@@ -41,7 +40,13 @@ Examples:
   core update --check      # Check for updates without applying
   core update --channel=dev   # Update to latest dev build
   core update --force      # Force update even if already on latest`,
-		RunE: runUpdate,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r := runUpdate(cmd, args)
+			if r.OK {
+				return nil
+			}
+			return core.NewError(r.Error())
+		},
 	}
 
 	updateCmd.PersistentFlags().StringVar(&updateChannel, "channel", "stable", "Release channel: stable, beta, alpha, prerelease, or dev")
@@ -59,14 +64,18 @@ Examples:
 			previousCheck := updateCheck
 			updateCheck = true
 			defer func() { updateCheck = previousCheck }()
-			return runUpdate(cmd, args)
+			r := runUpdate(cmd, args)
+			if r.OK {
+				return nil
+			}
+			return core.NewError(r.Error())
 		},
 	})
 
 	root.AddCommand(updateCmd)
 }
 
-func runUpdate(cmd *cobra.Command, args []string) error {
+func runUpdate(cmd *cobra.Command, args []string) core.Result {
 	// If we're in watch mode, wait for parent to die then restart
 	if updateWatchPID > 0 {
 		return watchAndRestart(updateWatchPID)
@@ -75,9 +84,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	currentVersion := Version
 	normalizedChannel := normaliseGitHubChannel(updateChannel)
 
-	fmt.Printf("Current version: %s\n", currentVersion)
-	fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	fmt.Printf("Channel: %s\n\n", normalizedChannel)
+	core.Print(nil, "Current version: %s", currentVersion)
+	core.Print(nil, "Platform: %s/%s", runtime.GOOS, runtime.GOARCH)
+	core.Print(nil, "Channel: %s", normalizedChannel)
 
 	// Handle dev channel specially - it's a prerelease tag, not a semver channel
 	if normalizedChannel == "dev" {
@@ -85,105 +94,107 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check for newer version
-	release, updateAvailable, err := CheckForNewerVersion(repoOwner, repoName, normalizedChannel, true)
-	if err != nil {
-		return updateCommandError(err, "failed to check for updates")
+	check := CheckForNewerVersion(repoOwner, repoName, normalizedChannel, true)
+	if !check.OK {
+		return updateCommandError(core.NewError(check.Error()), "failed to check for updates")
+	}
+	state := check.Value.(versionCheck)
+
+	if state.release == nil {
+		core.Print(nil, "! No releases found in %s channel", normalizedChannel)
+		return core.Ok(nil)
 	}
 
-	if release == nil {
-		fmt.Printf("! No releases found in %s channel\n", normalizedChannel)
-		return nil
+	if !state.updateAvailable && !updateForce {
+		core.Print(nil, "OK Already on latest version (%s)", state.release.TagName)
+		return core.Ok(nil)
 	}
 
-	if !updateAvailable && !updateForce {
-		fmt.Printf("OK Already on latest version (%s)\n", release.TagName)
-		return nil
-	}
-
-	fmt.Printf("Latest version: %s\n", release.TagName)
+	core.Print(nil, "Latest version: %s", state.release.TagName)
 
 	if updateCheck {
-		if updateAvailable {
-			fmt.Printf("\n! Update available: %s -> %s\n",
+		if state.updateAvailable {
+			core.Print(nil, "! Update available: %s -> %s",
 				currentVersion,
-				release.TagName)
-			fmt.Println("Run core update to update")
+				state.release.TagName)
+			core.Println("Run core update to update")
 		}
-		return nil
+		return core.Ok(nil)
 	}
 
 	// Spawn watcher before applying update
-	if err := spawnWatcher(); err != nil {
+	if r := spawnWatcher(); !r.OK {
 		// If watcher fails, continue anyway - update will still work
-		fmt.Printf(restartWatcherWarning, err)
+		core.Print(nil, restartWatcherWarning, r.Error())
 	}
 
 	// Apply update
-	fmt.Println("\n-> Downloading update...")
+	core.Println("-> Downloading update...")
 
-	downloadURL, err := GetDownloadURL(release, "")
-	if err != nil {
-		return updateCommandError(err, "failed to get download URL")
+	downloadURL := GetDownloadURL(state.release, "")
+	if !downloadURL.OK {
+		return updateCommandError(core.NewError(downloadURL.Error()), "failed to get download URL")
 	}
 
-	if err := DoUpdate(downloadURL); err != nil {
-		return updateCommandError(err, failedToApplyUpdate)
+	if r := DoUpdate(downloadURL.Value.(string)); !r.OK {
+		return updateCommandError(core.NewError(r.Error()), failedToApplyUpdate)
 	}
 
-	fmt.Printf("OK Updated to %s\n", release.TagName)
-	fmt.Println(restartingUpdateMessage)
+	core.Print(nil, "OK Updated to %s", state.release.TagName)
+	core.Println(restartingUpdateMessage)
 
-	return nil
+	return core.Ok(nil)
 }
 
 // handleDevUpdate handles updates from the dev release (rolling prerelease)
-func handleDevUpdate(currentVersion string) error {
+func handleDevUpdate(currentVersion string) core.Result {
 	client := NewGithubClient()
 
 	// Fetch the dev release directly by tag
-	release, err := client.GetLatestRelease(context.Background(), repoOwner, repoName, "beta")
-	if err != nil {
+	result := client.GetLatestRelease(context.Background(), repoOwner, repoName, "beta")
+	if !result.OK {
 		// Try fetching the "dev" tag directly
 		return handleDevTagUpdate(currentVersion)
 	}
+	release := result.Value.(*Release)
 
 	if release == nil {
 		return handleDevTagUpdate(currentVersion)
 	}
 
-	fmt.Printf("Latest dev: %s\n", release.TagName)
+	core.Print(nil, "Latest dev: %s", release.TagName)
 
 	if updateCheck {
-		fmt.Println("\nRun core update --channel=dev to update")
-		return nil
+		core.Println("Run core update --channel=dev to update")
+		return core.Ok(nil)
 	}
 
 	// Spawn watcher before applying update
-	if err := spawnWatcher(); err != nil {
-		fmt.Printf(restartWatcherWarning, err)
+	if r := spawnWatcher(); !r.OK {
+		core.Print(nil, restartWatcherWarning, r.Error())
 	}
 
-	fmt.Println("\n-> Downloading update...")
+	core.Println("-> Downloading update...")
 
-	downloadURL, err := GetDownloadURL(release, "")
-	if err != nil {
-		return updateCommandError(err, "failed to get download URL")
+	downloadURL := GetDownloadURL(release, "")
+	if !downloadURL.OK {
+		return updateCommandError(core.NewError(downloadURL.Error()), "failed to get download URL")
 	}
 
-	if err := DoUpdate(downloadURL); err != nil {
-		return updateCommandError(err, failedToApplyUpdate)
+	if r := DoUpdate(downloadURL.Value.(string)); !r.OK {
+		return updateCommandError(core.NewError(r.Error()), failedToApplyUpdate)
 	}
 
-	fmt.Printf("OK Updated to %s\n", release.TagName)
-	fmt.Println(restartingUpdateMessage)
+	core.Print(nil, "OK Updated to %s", release.TagName)
+	core.Println(restartingUpdateMessage)
 
-	return nil
+	return core.Ok(nil)
 }
 
 // handleDevTagUpdate fetches the dev release using the direct tag
-func handleDevTagUpdate(currentVersion string) error {
+func handleDevTagUpdate(currentVersion string) core.Result {
 	// Construct download URL directly for dev release
-	downloadURL := fmt.Sprintf(
+	downloadURL := core.Sprintf(
 		"https://github.com/%s/%s/releases/download/dev/core-%s-%s",
 		repoOwner, repoName, runtime.GOOS, runtime.GOARCH,
 	)
@@ -192,30 +203,30 @@ func handleDevTagUpdate(currentVersion string) error {
 		downloadURL += ".exe"
 	}
 
-	fmt.Println("Latest: dev (rolling)")
+	core.Println("Latest: dev (rolling)")
 
 	if updateCheck {
-		fmt.Println("\nRun core update --channel=dev to update")
-		return nil
+		core.Println("Run core update --channel=dev to update")
+		return core.Ok(nil)
 	}
 
 	// Spawn watcher before applying update
-	if err := spawnWatcher(); err != nil {
-		fmt.Printf(restartWatcherWarning, err)
+	if r := spawnWatcher(); !r.OK {
+		core.Print(nil, restartWatcherWarning, r.Error())
 	}
 
-	fmt.Println("\n-> Downloading from dev release...")
+	core.Println("-> Downloading from dev release...")
 
-	if err := DoUpdate(downloadURL); err != nil {
-		return updateCommandError(err, failedToApplyUpdate)
+	if r := DoUpdate(downloadURL); !r.OK {
+		return updateCommandError(core.NewError(r.Error()), failedToApplyUpdate)
 	}
 
-	fmt.Println("OK Updated to latest dev build")
-	fmt.Println(restartingUpdateMessage)
+	core.Println("OK Updated to latest dev build")
+	core.Println(restartingUpdateMessage)
 
-	return nil
+	return core.Ok(nil)
 }
 
-func updateCommandError(err error, msg string) error {
-	return core.Wrap(err, "update.command", msg)
+func updateCommandError(err error, msg string) core.Result {
+	return core.Fail(core.Wrap(err, "update.command", msg))
 }

@@ -3,38 +3,35 @@
 package updater
 
 import (
-	"os"
-	"os/exec"
 	"strconv"
 	"syscall"
 	"time"
+
+	core "dappco.re/go"
 )
 
 // spawnWatcher spawns a background process that watches for the current process
 // to exit, then restarts the binary with --version to confirm the update.
-func spawnWatcher() error {
-	executable, err := os.Executable()
-	if err != nil {
-		return err
+func spawnWatcher() core.Result {
+	args := core.Args()
+	if len(args) == 0 || args[0] == "" {
+		return core.Fail(core.E("spawnWatcher", "missing executable path", nil))
 	}
+	executable := args[0]
 
-	pid := os.Getpid()
+	pid := core.Getpid()
 
 	// Spawn: core update --watch-pid=<pid>
-	cmd := exec.Command(executable, "update", "--watch-pid", strconv.Itoa(pid))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	// Detach from parent process group
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
-
-	return cmd.Start()
+	_, err := syscall.ForkExec(executable, []string{executable, "update", "--watch-pid", strconv.Itoa(pid)}, &syscall.ProcAttr{
+		Env:   core.Environ(),
+		Files: []uintptr{0, 1, 2},
+		Sys:   &syscall.SysProcAttr{Setpgid: true},
+	})
+	return core.ResultOf(nil, err)
 }
 
 // watchAndRestart waits for the given PID to exit, then restarts the binary.
-func watchAndRestart(pid int) error {
+func watchAndRestart(pid int) core.Result {
 	// Wait for the parent process to die
 	for isProcessRunning(pid) {
 
@@ -45,24 +42,19 @@ func watchAndRestart(pid int) error {
 	time.Sleep(200 * time.Millisecond)
 
 	// Get executable path
-	executable, err := os.Executable()
-	if err != nil {
-		return err
+	args := core.Args()
+	if len(args) == 0 || args[0] == "" {
+		return core.Fail(core.E("watchAndRestart", "missing executable path", nil))
 	}
+	executable := args[0]
 
 	// Use exec to replace this process
-	return syscall.Exec(executable, []string{executable, "--version"}, os.Environ())
+	return core.ResultOf(nil, syscall.Exec(executable, []string{executable, "--version"}, core.Environ()))
 }
 
 // isProcessRunning checks if a process with the given PID is still running.
 func isProcessRunning(pid int) bool {
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-
 	// On Unix, FindProcess always succeeds, so we need to send signal 0
 	// to check if the process actually exists
-	err = process.Signal(syscall.Signal(0))
-	return err == nil
+	return syscall.Kill(pid, syscall.Signal(0)) == nil
 }

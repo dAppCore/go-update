@@ -2,12 +2,8 @@ package updater
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
 	"runtime"
-	"strings"
 
 	core "dappco.re/go"
 	"golang.org/x/oauth2"
@@ -35,20 +31,24 @@ type Release struct {
 // This allows for mocking the client in tests.
 type GithubClient interface {
 	// GetPublicRepos fetches the public repositories for a user or organization.
-	GetPublicRepos(ctx context.Context, userOrOrg string) ([]string, error)
+	GetPublicRepos(ctx context.Context, userOrOrg string) core.Result
 	// GetLatestRelease fetches the latest release for a given repository and channel.
-	GetLatestRelease(ctx context.Context, owner, repo, channel string) (*Release, error)
+	GetLatestRelease(ctx context.Context, owner, repo, channel string) core.Result
 	// GetReleaseByPullRequest fetches a release associated with a specific pull request number.
-	GetReleaseByPullRequest(ctx context.Context, owner, repo string, prNumber int) (*Release, error)
+	GetReleaseByPullRequest(ctx context.Context, owner, repo string, prNumber int) core.Result
 }
 
 type githubClient struct{}
+
+// Client exposes the GitHub client method set for examples while the concrete
+// implementation remains package-local.
+type Client = githubClient
 
 // NewAuthenticatedClient creates a new HTTP client that authenticates with the GitHub API.
 // It uses the GITHUB_TOKEN environment variable for authentication.
 // If the token is not set, it returns the default HTTP client.
 var NewAuthenticatedClient = func(ctx context.Context) *http.Client {
-	token := os.Getenv("GITHUB_TOKEN")
+	token := core.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		return http.DefaultClient
 	}
@@ -61,36 +61,39 @@ var NewAuthenticatedClient = func(ctx context.Context) *http.Client {
 	return client
 }
 
-func (g *githubClient) GetPublicRepos(ctx context.Context, userOrOrg string) ([]string, error) {
+func (g *githubClient) GetPublicRepos(ctx context.Context, userOrOrg string) core.Result {
 	return g.getPublicReposWithAPIURL(ctx, "https://api.github.com", userOrOrg)
 }
 
-func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, userOrOrg string) ([]string, error) {
+func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, userOrOrg string) core.Result {
 	client := NewAuthenticatedClient(ctx)
 	var allCloneURLs []string
-	url := fmt.Sprintf("%s/users/%s/repos", apiURL, userOrOrg)
+	url := core.Sprintf("%s/users/%s/repos", apiURL, userOrOrg)
 
 	for {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return core.Fail(err)
 		}
 
-		resp, err := getReposPage(ctx, client, apiURL, userOrOrg, url)
-		if err != nil {
-			return nil, err
+		page := getReposPage(ctx, client, apiURL, userOrOrg, url)
+		if !page.OK {
+			return page
 		}
+		resp := page.Value.(*http.Response)
 
 		if resp.StatusCode != http.StatusOK {
 			closeResponseBody(resp.Body)
-			return nil, core.E("github.getPublicReposWithAPIURL", fmt.Sprintf("failed to fetch repos: %s", resp.Status), nil)
+			return core.Fail(core.E("github.getPublicReposWithAPIURL", core.Sprintf("failed to fetch repos: %s", resp.Status), nil))
 		}
 
 		var repos []Repo
-		if err := json.NewDecoder(resp.Body).Decode(&repos); err != nil {
-			closeResponseBody(resp.Body)
-			return nil, err
+		body := core.ReadAll(resp.Body)
+		if !body.OK {
+			return body
 		}
-		closeResponseBody(resp.Body)
+		if result := core.JSONUnmarshal([]byte(body.Value.(string)), &repos); !result.OK {
+			return result
+		}
 
 		for _, repo := range repos {
 			allCloneURLs = append(allCloneURLs, repo.CloneURL)
@@ -103,37 +106,39 @@ func (g *githubClient) getPublicReposWithAPIURL(ctx context.Context, apiURL, use
 		url = nextURL
 	}
 
-	return allCloneURLs, nil
+	return core.Ok(allCloneURLs)
 }
 
-func getReposPage(ctx context.Context, client *http.Client, apiURL, userOrOrg, url string) (*http.Response, error) {
-	resp, err := getURL(ctx, client, url)
-	if err != nil {
-		return nil, err
+func getReposPage(ctx context.Context, client *http.Client, apiURL, userOrOrg, url string) core.Result {
+	first := getURL(ctx, client, url)
+	if !first.OK {
+		return first
 	}
+	resp := first.Value.(*http.Response)
 
 	if resp.StatusCode == http.StatusOK {
-		return resp, nil
+		return core.Ok(resp)
 	}
 
 	closeResponseBody(resp.Body)
-	return getURL(ctx, client, fmt.Sprintf("%s/orgs/%s/repos", apiURL, userOrOrg))
+	return getURL(ctx, client, core.Sprintf("%s/orgs/%s/repos", apiURL, userOrOrg))
 }
 
-func getURL(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
-	req, err := newAgentRequest(ctx, "GET", url)
-	if err != nil {
-		return nil, err
+func getURL(ctx context.Context, client *http.Client, url string) core.Result {
+	request := newAgentRequest(ctx, "GET", url)
+	if !request.OK {
+		return request
 	}
-	return client.Do(req)
+	resp, err := client.Do(request.Value.(*http.Request))
+	return core.ResultOf(resp, err)
 }
 
 func (g *githubClient) findNextURL(linkHeader string) string {
-	links := strings.Split(linkHeader, ",")
+	links := core.Split(linkHeader, ",")
 	for _, link := range links {
-		parts := strings.Split(link, ";")
-		if len(parts) == 2 && strings.TrimSpace(parts[1]) == `rel="next"` {
-			return strings.Trim(strings.TrimSpace(parts[0]), "<>")
+		parts := core.Split(link, ";")
+		if len(parts) == 2 && core.Trim(parts[1]) == `rel="next"` {
+			return core.TrimSuffix(core.TrimPrefix(core.Trim(parts[0]), "<"), ">")
 		}
 	}
 	return ""
@@ -141,31 +146,35 @@ func (g *githubClient) findNextURL(linkHeader string) string {
 
 // GetLatestRelease fetches the latest release for a given repository and channel.
 // The channel can be "stable", "beta", or "alpha".
-func (g *githubClient) GetLatestRelease(ctx context.Context, owner, repo, channel string) (*Release, error) {
+func (g *githubClient) GetLatestRelease(ctx context.Context, owner, repo, channel string) core.Result {
 	client := NewAuthenticatedClient(ctx)
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", owner, repo)
+	url := core.Sprintf("https://api.github.com/repos/%s/%s/releases", owner, repo)
 
-	req, err := newAgentRequest(ctx, "GET", url)
-	if err != nil {
-		return nil, err
+	request := newAgentRequest(ctx, "GET", url)
+	if !request.OK {
+		return request
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(request.Value.(*http.Request))
 	if err != nil {
-		return nil, err
+		return core.Fail(err)
 	}
 	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, core.E("github.GetLatestRelease", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
+		return core.Fail(core.E("github.GetLatestRelease", core.Sprintf("failed to fetch releases: %s", resp.Status), nil))
 	}
 
 	var releases []Release
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-		return nil, err
+	body := core.ReadAll(resp.Body)
+	if !body.OK {
+		return body
+	}
+	if result := core.JSONUnmarshal([]byte(body.Value.(string)), &releases); !result.OK {
+		return result
 	}
 
-	return filterReleases(releases, channel), nil
+	return core.Ok(filterReleases(releases, channel))
 }
 
 // filterReleases filters releases based on the specified channel.
@@ -181,11 +190,11 @@ func filterReleases(releases []Release, channel string) *Release {
 
 // determineChannel determines the stability channel of a release based on its tag and PreRelease flag.
 func determineChannel(tagName string, isPreRelease bool) string {
-	tagLower := strings.ToLower(tagName)
-	if strings.Contains(tagLower, "alpha") {
+	tagLower := core.Lower(tagName)
+	if core.Contains(tagLower, "alpha") {
 		return "alpha"
 	}
-	if strings.Contains(tagLower, "beta") {
+	if core.Contains(tagLower, "beta") {
 		return "beta"
 	}
 	if isPreRelease { // A pre-release without alpha/beta is treated as beta
@@ -195,39 +204,43 @@ func determineChannel(tagName string, isPreRelease bool) string {
 }
 
 // GetReleaseByPullRequest fetches a release associated with a specific pull request number.
-func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo string, prNumber int) (*Release, error) {
+func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo string, prNumber int) core.Result {
 	client := NewAuthenticatedClient(ctx)
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", owner, repo)
+	url := core.Sprintf("https://api.github.com/repos/%s/%s/releases", owner, repo)
 
-	req, err := newAgentRequest(ctx, "GET", url)
-	if err != nil {
-		return nil, err
+	request := newAgentRequest(ctx, "GET", url)
+	if !request.OK {
+		return request
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(request.Value.(*http.Request))
 	if err != nil {
-		return nil, err
+		return core.Fail(err)
 	}
 	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, core.E("github.GetReleaseByPullRequest", fmt.Sprintf("failed to fetch releases: %s", resp.Status), nil)
+		return core.Fail(core.E("github.GetReleaseByPullRequest", core.Sprintf("failed to fetch releases: %s", resp.Status), nil))
 	}
 
 	var releases []Release
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-		return nil, err
+	body := core.ReadAll(resp.Body)
+	if !body.OK {
+		return body
+	}
+	if result := core.JSONUnmarshal([]byte(body.Value.(string)), &releases); !result.OK {
+		return result
 	}
 
 	// The pr number is included in the tag name with the format `vX.Y.Z-alpha.pr.123` or `vX.Y.Z-beta.pr.123`
-	prTagSuffix := fmt.Sprintf(".pr.%d", prNumber)
+	prTagSuffix := core.Sprintf(".pr.%d", prNumber)
 	for _, release := range releases {
-		if strings.Contains(release.TagName, prTagSuffix) {
-			return &release, nil
+		if core.Contains(release.TagName, prTagSuffix) {
+			return core.Ok(&release)
 		}
 	}
 
-	return nil, nil // No release found for the given PR number
+	return core.Ok((*Release)(nil)) // No release found for the given PR number
 }
 
 // GetDownloadURL finds the appropriate download URL for the current operating system and architecture.
@@ -265,39 +278,36 @@ func (g *githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo 
 //		// handle error
 //	}
 //	fmt.Println(url) // "https://example.com/download/linux-amd64" (on a Linux AMD64 system)
-func GetDownloadURL(release *Release, releaseURLFormat string) (string, error) {
+func GetDownloadURL(release *Release, releaseURLFormat string) core.Result {
 	if release == nil {
-		return "", core.E("GetDownloadURL", "no release provided", nil)
+		return core.Fail(core.E("GetDownloadURL", "no release provided", nil))
 	}
 
 	if releaseURLFormat != "" {
-		// Replace {tag}, {os}, and {arch} placeholders
-		r := strings.NewReplacer(
-			"{tag}", release.TagName,
-			"{os}", runtime.GOOS,
-			"{arch}", runtime.GOARCH,
-		)
-		return r.Replace(releaseURLFormat), nil
+		url := core.Replace(releaseURLFormat, "{tag}", release.TagName)
+		url = core.Replace(url, "{os}", runtime.GOOS)
+		url = core.Replace(url, "{arch}", runtime.GOARCH)
+		return core.Ok(url)
 	}
 
 	osName := runtime.GOOS
 	archName := runtime.GOARCH
 
 	for _, asset := range release.Assets {
-		assetNameLower := strings.ToLower(asset.Name)
+		assetNameLower := core.Lower(asset.Name)
 		// Match asset that contains both OS and architecture
-		if strings.Contains(assetNameLower, osName) && strings.Contains(assetNameLower, archName) {
-			return asset.DownloadURL, nil
+		if core.Contains(assetNameLower, osName) && core.Contains(assetNameLower, archName) {
+			return core.Ok(asset.DownloadURL)
 		}
 	}
 
 	// Fallback for OS only if no asset matched both OS and arch
 	for _, asset := range release.Assets {
-		assetNameLower := strings.ToLower(asset.Name)
-		if strings.Contains(assetNameLower, osName) {
-			return asset.DownloadURL, nil
+		assetNameLower := core.Lower(asset.Name)
+		if core.Contains(assetNameLower, osName) {
+			return core.Ok(asset.DownloadURL)
 		}
 	}
 
-	return "", core.E("GetDownloadURL", fmt.Sprintf("no suitable download asset found for %s/%s", osName, archName), nil)
+	return core.Fail(core.E("GetDownloadURL", core.Sprintf("no suitable download asset found for %s/%s", osName, archName), nil))
 }

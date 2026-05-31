@@ -3,7 +3,7 @@ module dappco.re/go/update
 go 1.26.0
 
 require (
-	dappco.re/go v0.9.0
+	dappco.re/go v0.10.3
 	github.com/Snider/Borg v0.2.0 // TODO(#763): replace with dappco.re/go/borg once published.
 	github.com/minio/selfupdate v0.6.0 // Note: in-place binary self-update and rollback support; no core equivalent
 	github.com/spf13/cobra v1.10.2 // Note: CLI command and flag wiring; no core equivalent

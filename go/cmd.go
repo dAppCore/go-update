@@ -25,6 +25,15 @@ var (
 	updateWatchPID int
 )
 
+// spawnWatcher launches the restart watcher before an update is applied.
+// It indirects to the platform-specific spawnWatcherImpl so tests can stub
+// the process spawn, mirroring the DoUpdate and NewGithubClient seams.
+//
+// Example:
+//
+//	updater.spawnWatcher = func() core.Result { return core.Ok(nil) }
+var spawnWatcher = spawnWatcherImpl
+
 // AddUpdateCommands registers the update command and subcommands.
 func AddUpdateCommands(root *cobra.Command) {
 	updateCmd := &cobra.Command{

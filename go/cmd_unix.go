@@ -10,9 +10,10 @@ import (
 	core "dappco.re/go"
 )
 
-// spawnWatcher spawns a background process that watches for the current process
-// to exit, then restarts the binary with --version to confirm the update.
-func spawnWatcher() core.Result {
+// spawnWatcherImpl spawns a background process that watches for the current
+// process to exit, then restarts the binary with --version to confirm the
+// update. It is reached through the spawnWatcher var so tests can stub it.
+func spawnWatcherImpl() core.Result {
 	args := core.Args()
 	if len(args) == 0 || args[0] == "" {
 		return core.Fail(core.E("spawnWatcher", "missing executable path", nil))

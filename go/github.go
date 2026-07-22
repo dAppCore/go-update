@@ -36,6 +36,13 @@ type GithubClient interface {
 	GetLatestRelease(ctx context.Context, owner, repo, channel string) core.Result
 	// GetReleaseByPullRequest fetches a release associated with a specific pull request number.
 	GetReleaseByPullRequest(ctx context.Context, owner, repo string, prNumber int) core.Result
+	// GetReleaseByTag fetches the release with the exact tag name, bypassing
+	// channel classification entirely. Use this for a rolling non-semver tag
+	// (e.g. a "dev" prerelease republished on every push): determineChannel
+	// can only bucket such a tag into alpha/beta/stable by substring or the
+	// prerelease flag, it cannot target one exact tag string, so
+	// GetLatestRelease is the wrong tool for finding it.
+	GetReleaseByTag(ctx context.Context, owner, repo, tag string) core.Result
 }
 
 type githubClient struct{}
@@ -201,6 +208,49 @@ func determineChannel(tagName string, isPreRelease bool) string {
 		return "beta"
 	}
 	return "stable"
+}
+
+// GetReleaseByTag fetches the release with the exact tag name (e.g. a rolling
+// non-semver tag such as "dev"), bypassing channel classification entirely.
+// Returns core.Ok((*Release)(nil)) — not a failure — when no release carries
+// that tag, mirroring GetReleaseByPullRequest's not-found shape.
+//
+//	result := client.GetReleaseByTag(ctx, "dAppCore", "go-inference", "dev")
+//	if result.OK {
+//		release := result.Value.(*updater.Release) // nil if no release carries that tag
+//	}
+func (g *githubClient) GetReleaseByTag(ctx context.Context, owner, repo, tag string) core.Result {
+	client := NewAuthenticatedClient(ctx)
+	url := core.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", owner, repo, tag)
+
+	request := newAgentRequest(ctx, "GET", url)
+	if !request.OK {
+		return request
+	}
+
+	resp, err := client.Do(request.Value.(*http.Request))
+	if err != nil {
+		return core.Fail(err)
+	}
+	defer closeResponseBody(resp.Body)
+
+	if resp.StatusCode == http.StatusNotFound {
+		return core.Ok((*Release)(nil))
+	}
+	if resp.StatusCode != http.StatusOK {
+		return core.Fail(core.E("github.GetReleaseByTag", core.Sprintf("failed to fetch release: %s", resp.Status), nil))
+	}
+
+	var release Release
+	body := core.ReadAll(resp.Body)
+	if !body.OK {
+		return body
+	}
+	if result := core.JSONUnmarshal([]byte(body.Value.(string)), &release); !result.OK {
+		return result
+	}
+
+	return core.Ok(&release)
 }
 
 // GetReleaseByPullRequest fetches a release associated with a specific pull request number.

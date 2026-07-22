@@ -33,6 +33,13 @@ func (c flowsTestClient) GetReleaseByPullRequest(ctx Context, owner, repo string
 	return Ok(c.pr)
 }
 
+// GetReleaseByTag is unused by any updater.go flow (it is a primitive for
+// callers that need an exact-tag lookup, e.g. a rolling "dev" release) but is
+// still required to satisfy GithubClient.
+func (c flowsTestClient) GetReleaseByTag(ctx Context, owner, repo, tag string) Result {
+	return Ok((*Release)(nil))
+}
+
 // withFlowsClient swaps NewGithubClient for the test duration, returning a
 // restore func the caller defers.
 func withFlowsClient(client GithubClient) func() {

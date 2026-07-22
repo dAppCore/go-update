@@ -44,6 +44,10 @@ func (githubClient) GetReleaseByPullRequest(ctx context.Context, owner, repo str
 	return core.Ok((*updater.Release)(nil))
 }
 
+func (githubClient) GetReleaseByTag(ctx context.Context, owner, repo, tag string) core.Result {
+	return core.Ok((*updater.Release)(nil))
+}
+
 func main() {
 	originalVersion := updater.Version
 	originalDoUpdate := updater.DoUpdate

@@ -165,6 +165,55 @@ func TestGithub_Client_GetReleaseByPullRequest_Ugly(t *T) {
 	AssertNotEqual(t, "", result.Error())
 }
 
+func TestGithub_Client_GetReleaseByTag_Good(t *T) {
+	original := NewAuthenticatedClient
+	defer func() { NewAuthenticatedClient = original }()
+	NewAuthenticatedClient = func(_ Context) *http.Client {
+		return &http.Client{Transport: githubTestRoundTrip(func(req *Request) (*Response, error) {
+			AssertEqual(t, "/repos/core/update/releases/tags/dev", req.URL.Path)
+			return githubTestResponse(req, http.StatusOK, `{"tag_name":"dev","prerelease":true}`), nil
+		})}
+	}
+
+	result := (&githubClient{}).GetReleaseByTag(Background(), "core", "update", "dev")
+
+	AssertTrue(t, result.OK)
+	AssertEqual(t, "dev", result.Value.(*Release).TagName)
+}
+
+func TestGithub_Client_GetReleaseByTag_Bad(t *T) {
+	original := NewAuthenticatedClient
+	defer func() { NewAuthenticatedClient = original }()
+	NewAuthenticatedClient = func(_ Context) *http.Client {
+		return &http.Client{Transport: githubTestRoundTrip(func(req *Request) (*Response, error) {
+			return githubTestResponse(req, http.StatusInternalServerError, ""), nil
+		})}
+	}
+
+	result := (&githubClient{}).GetReleaseByTag(Background(), "core", "update", "dev")
+
+	AssertFalse(t, result.OK)
+	AssertContains(t, result.Error(), "failed to fetch release")
+}
+
+func TestGithub_Client_GetReleaseByTag_Ugly(t *T) {
+	// No release carries the tag: GitHub answers 404, which is a found-nothing
+	// result (OK, nil release) rather than a failure — mirrors
+	// GetReleaseByPullRequest's not-found shape.
+	original := NewAuthenticatedClient
+	defer func() { NewAuthenticatedClient = original }()
+	NewAuthenticatedClient = func(_ Context) *http.Client {
+		return &http.Client{Transport: githubTestRoundTrip(func(req *Request) (*Response, error) {
+			return githubTestResponse(req, http.StatusNotFound, ""), nil
+		})}
+	}
+
+	result := (&githubClient{}).GetReleaseByTag(Background(), "core", "update", "missing")
+
+	AssertTrue(t, result.OK)
+	AssertNil(t, result.Value.(*Release))
+}
+
 func TestGithub_GetDownloadURL_Good(t *T) {
 	release := &Release{TagName: "v1.2.3"}
 

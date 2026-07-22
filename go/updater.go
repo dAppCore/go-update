@@ -32,6 +32,35 @@ type versionCheck struct {
 	updateAvailable bool
 }
 
+// VersionCheckResult is the exported view over the payload CheckForNewerVersion
+// wraps in its core.Result. The concrete type behind Result.Value stays
+// unexported, but a caller that needs the fetched release — e.g. to run its
+// own asset-selection over release.Assets, because GetDownloadURL's automatic
+// GOOS/GOARCH matching does not fit its naming scheme — can reach it through
+// this interface instead of duplicating the fetch via NewGithubClient.
+//
+//	check := updater.CheckForNewerVersion(owner, repo, channel, true)
+//	if !check.OK {
+//		return check
+//	}
+//	vc := check.Value.(updater.VersionCheckResult)
+//	if vc.Available() {
+//		asset := pickAsset(vc.Release().Assets) // caller's own selection logic
+//	}
+type VersionCheckResult interface {
+	// Release returns the release CheckForNewerVersion fetched for the
+	// channel, or nil when the channel has no release.
+	Release() *Release
+	// Available reports whether that release is newer than updater.Version.
+	Available() bool
+}
+
+// Release implements VersionCheckResult.
+func (v versionCheck) Release() *Release { return v.release }
+
+// Available implements VersionCheckResult.
+func (v versionCheck) Available() bool { return v.updateAvailable }
+
 // DoUpdate is a variable that holds the function to perform the actual update.
 // This can be replaced in tests to prevent actual updates.
 var DoUpdate = func(url string) core.Result {
@@ -51,12 +80,25 @@ var DoUpdate = func(url string) core.Result {
 		return core.Fail(core.E("DoUpdate", core.Sprintf("failed to download update: %s", resp.Status), nil))
 	}
 
-	err = selfupdate.Apply(resp.Body, selfupdate.Options{})
-	if err != nil {
+	return DoUpdateFromReader(resp.Body)
+}
+
+// DoUpdateFromReader applies an update from binary bytes already in hand,
+// rather than fetching a URL itself. DoUpdate is a thin wrapper around this:
+// fetch the URL, hand the body here. It exists for callers whose release
+// asset is not a raw binary stream — e.g. a zip holding one binary — and so
+// must download and unpack the asset themselves before the actual swap; this
+// is the primitive that lets them reuse go-update's apply/rollback logic
+// (selfupdate.Apply) for that final step instead of re-implementing it.
+//
+//	// caller already downloaded and unzipped the release asset into memory
+//	result := updater.DoUpdateFromReader(bytes.NewReader(extractedBinary))
+var DoUpdateFromReader = func(r core.Reader) core.Result {
+	if err := selfupdate.Apply(r, selfupdate.Options{}); err != nil {
 		if rerr := selfupdate.RollbackError(err); rerr != nil {
-			return core.Fail(core.E("DoUpdate", "failed to rollback from failed update", rerr))
+			return core.Fail(core.E("DoUpdateFromReader", "failed to rollback from failed update", rerr))
 		}
-		return core.Fail(core.E("DoUpdate", "update failed", err))
+		return core.Fail(core.E("DoUpdateFromReader", "update failed", err))
 	}
 	return core.Ok(nil)
 }

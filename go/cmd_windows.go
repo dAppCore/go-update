@@ -23,7 +23,10 @@ func spawnWatcherImpl() core.Result {
 	pid := core.Getpid()
 
 	// Spawn: core update --watch-pid=<pid>
-	_, err := syscall.StartProcess(executable, []string{executable, "update", "--watch-pid", strconv.Itoa(pid)}, &syscall.ProcAttr{
+	// StartProcess returns (pid, handle, err) — three values. The unix file
+	// next door calls ForkExec, which returns two, and this file had never
+	// been compiled, so the mismatch sat here unnoticed.
+	_, _, err := syscall.StartProcess(executable, []string{executable, "update", "--watch-pid", strconv.Itoa(pid)}, &syscall.ProcAttr{
 		Env:   core.Environ(),
 		Files: []uintptr{0, 1, 2},
 		Sys:   &syscall.SysProcAttr{CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP},
@@ -52,7 +55,7 @@ func watchAndRestart(pid int) core.Result {
 	executable := args[0]
 
 	// On Windows, spawn new process and exit
-	_, err := syscall.StartProcess(executable, []string{executable, "--version"}, &syscall.ProcAttr{
+	_, _, err := syscall.StartProcess(executable, []string{executable, "--version"}, &syscall.ProcAttr{
 		Env:   core.Environ(),
 		Files: []uintptr{0, 1, 2},
 	})
@@ -66,11 +69,25 @@ func watchAndRestart(pid int) core.Result {
 
 // isProcessRunning checks if a process with the given PID is still running.
 func isProcessRunning(pid int) bool {
-	// On Windows, try to open the process with query rights
-	handle, err := syscall.OpenProcess(syscall.PROCESS_QUERY_INFORMATION, false, uint32(pid))
+	if pid <= 0 {
+		return false
+	}
+	// SYNCHRONIZE is what makes the handle waitable; QUERY_INFORMATION keeps a
+	// denied pid distinguishable from an absent one.
+	handle, err := syscall.OpenProcess(syscall.SYNCHRONIZE|syscall.PROCESS_QUERY_INFORMATION, false, uint32(pid))
 	if err != nil {
 		return false
 	}
-	syscall.CloseHandle(handle)
-	return true
+	defer func() { _ = syscall.CloseHandle(handle) }()
+
+	// A handle can still be opened to a process that has exited but not yet
+	// been reaped, so opening it is not the answer. Waiting zero milliseconds
+	// is: WAIT_TIMEOUT means still running, WAIT_OBJECT_0 means it has exited.
+	// GetExitCodeProcess is the usual alternative and cannot tell a running
+	// process from one that exited with STILL_ACTIVE (259).
+	state, err := syscall.WaitForSingleObject(handle, 0)
+	if err != nil {
+		return false
+	}
+	return state == uint32(syscall.WAIT_TIMEOUT)
 }

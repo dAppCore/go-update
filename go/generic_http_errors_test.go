@@ -1,6 +1,6 @@
 package updater
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestGenericHttpErrors_BadStatus(t *T) {
 	// A non-200 status from the update server surfaces a status-code failure.

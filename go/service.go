@@ -1,4 +1,4 @@
-//go:generate go run dappco.re/go/update/build
+//go:generate go run github.com/dappcore/go-update/go/build
 
 // Package updater provides functionality for self-updating Go applications.
 // It supports updates from GitHub releases and generic HTTP endpoints.
@@ -7,7 +7,7 @@ package updater
 import (
 	"net/url"
 
-	core "dappco.re/go"
+	core "github.com/dappcore/go"
 )
 
 // StartupCheckMode defines the updater's behavior on startup.

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	. "dappco.re/go"
-	updater "dappco.re/go/update"
+	. "github.com/dappcore/go"
+	updater "github.com/dappcore/go-update/go"
 )
 
 // cliFlowsFixture pins the updater package seams the CLI driver depends on and

@@ -1,7 +1,7 @@
 package updater
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 	"github.com/spf13/cobra"
 )
 

@@ -1,6 +1,6 @@
 package updater
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 const serviceTestRepo = "https://github.com/core/update"
 

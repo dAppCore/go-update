@@ -1,6 +1,6 @@
 package updater
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func ExampleNewUpdateService() {
 	result := NewUpdateService(UpdateServiceConfig{RepoURL: "https://github.com/core/update"})

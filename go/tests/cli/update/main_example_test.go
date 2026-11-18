@@ -1,8 +1,8 @@
 package main
 
 import (
-	. "dappco.re/go"
-	updater "dappco.re/go/update"
+	. "github.com/dappcore/go"
+	updater "github.com/dappcore/go-update/go"
 )
 
 func ExampleClient_GetPublicRepos() {

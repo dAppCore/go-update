@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 func TestUpdater_CheckForNewerVersion_Result(t *T) {

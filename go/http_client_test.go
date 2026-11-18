@@ -1,6 +1,6 @@
 package updater
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestHttpClient_NewHTTPClient_Configured(t *T) {
 	client := NewHTTPClient()

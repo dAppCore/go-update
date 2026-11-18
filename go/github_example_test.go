@@ -1,6 +1,6 @@
 package updater
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func ExampleClient_GetPublicRepos() {
 	result := (&githubClient{}).findNextURL(`<https://api.github.com/repositories?page=2>; rel="next"`)

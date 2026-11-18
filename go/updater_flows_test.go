@@ -3,7 +3,7 @@ package updater
 import (
 	"net/http"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // flowsTestClient is a configurable GithubClient stub for exercising the

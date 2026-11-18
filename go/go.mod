@@ -1,9 +1,9 @@
-module dappco.re/go/update
+module github.com/dappcore/go-update/go
 
 go 1.26.0
 
 require (
-	dappco.re/go v0.12.0
+	github.com/dappcore/go v0.14.0
 	github.com/minio/selfupdate v0.6.0 // Note: in-place binary self-update and rollback support; no core equivalent
 	github.com/spf13/cobra v1.10.2 // Note: CLI command and flag wiring; no core equivalent
 	golang.org/x/mod v0.38.0 // Note: semantic version comparison for update checks; no core equivalent

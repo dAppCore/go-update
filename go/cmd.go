@@ -4,7 +4,7 @@ import (
 	"context"
 	"runtime"
 
-	core "dappco.re/go"
+	core "github.com/dappcore/go"
 	"github.com/spf13/cobra"
 )
 

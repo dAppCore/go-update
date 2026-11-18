@@ -5,7 +5,7 @@ import (
 	"net/http" // Note: AX-6 - structural HTTP transport boundary for update client/request types.
 	"time"
 
-	"dappco.re/go"
+	"github.com/dappcore/go"
 )
 
 const defaultHTTPTimeout = 30 * time.Second

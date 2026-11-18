@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	core "dappco.re/go"
+	core "github.com/dappcore/go"
 )
 
 // spawnWatcherImpl spawns a background process that watches for the current

@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	core "dappco.re/go"
+	core "github.com/dappcore/go"
 	"github.com/minio/selfupdate"
 	"golang.org/x/mod/semver"
 )

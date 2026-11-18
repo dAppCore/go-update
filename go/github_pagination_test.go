@@ -3,7 +3,7 @@ package updater
 import (
 	"net/http"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // githubErrRoundTrip always fails, exercising transport-error branches.

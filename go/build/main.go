@@ -1,6 +1,6 @@
 package main
 
-import core "dappco.re/go"
+import core "github.com/dappcore/go"
 
 func main() {
 	// Read package.json

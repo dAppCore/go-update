@@ -18,12 +18,12 @@ tasks:
         trap 'rm -f "$bin" "$modfile" "${modfile%.mod}.sum"' EXIT
         cp go.mod "$modfile"
         go mod edit -modfile="$modfile" \
-          -droprequire=dappco.re/go/cli \
-          -droprequire=dappco.re/go/io \
-          -droprequire=dappco.re/go/log \
-          -droprequire=dappco.re/go/core \
-          -droprequire=dappco.re/go/i18n \
-          -droprequire=dappco.re/go/inference \
+          -droprequire=github.com/dappcore/cli/go \
+          -droprequire=github.com/dappcore/go-io/go \
+          -droprequire=github.com/dappcore/go-log/go \
+          -droprequire=github.com/dappcore/go \
+          -droprequire=github.com/dappcore/go-i18n/go \
+          -droprequire=github.com/dappcore/go-inference/go \
           -require=forge.lthn.ai/core/cli@v0.3.6 \
           -require=forge.lthn.ai/core/go-log@v0.0.4
         GOFLAGS="-modfile=$modfile -mod=mod" \

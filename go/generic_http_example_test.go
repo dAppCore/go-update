@@ -1,6 +1,6 @@
 package updater
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func ExampleGetLatestUpdateFromURL() {
 	server := NewHTTPTestServer(HandlerFunc(func(w ResponseWriter, r *Request) {

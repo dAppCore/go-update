@@ -5,7 +5,7 @@ import (
 	"net/http" // Note: AX-6 - structural HTTP transport boundary for update discovery responses.
 	"net/url"
 
-	"dappco.re/go"
+	"github.com/dappcore/go"
 )
 
 // GenericUpdateInfo holds the information from a latest.json file.

@@ -3,7 +3,7 @@ package updater
 import (
 	"net/http"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // errReadCloser fails on Read, exercising the core.ReadAll error branches in

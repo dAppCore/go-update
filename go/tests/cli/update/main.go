@@ -11,8 +11,8 @@ import (
 	"net/http/httptest"
 	"runtime"
 
-	core "dappco.re/go"
-	updater "dappco.re/go/update"
+	core "github.com/dappcore/go"
+	updater "github.com/dappcore/go-update/go"
 )
 
 type githubClient struct{}

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"runtime"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 type githubTestReadCloser struct {
